@@ -7,5 +7,4 @@ SpeechRecognition
 sounddevice
 soundfile
 numpy
-pyaudio
 webrtcvad
