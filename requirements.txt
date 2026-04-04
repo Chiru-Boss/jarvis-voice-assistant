@@ -1,4 +1,11 @@
 # requirements.txt
 
-
-# Add your package dependencies.
+python-dotenv
+requests
+pyttsx3
+SpeechRecognition
+sounddevice
+soundfile
+numpy
+pyaudio
+webrtcvad
