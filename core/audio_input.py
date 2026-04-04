@@ -26,8 +26,21 @@ class AudioInput:
     # Public API
     # ------------------------------------------------------------------
 
-    def listen(self):
+    def listen(self, min_duration=2.0, max_duration=30.0):
         """Block until speech is detected, then record until silence.
+
+        At least *min_duration* seconds of audio are captured once speech
+        begins, so very short utterances (e.g. "Jarvis") are not truncated
+        before being sent to the speech recogniser.  If no speech is detected
+        within *max_duration* seconds the function returns the (possibly
+        empty) audio collected so far.
+
+        Parameters
+        ----------
+        min_duration : float
+            Minimum seconds of audio to capture after speech starts (default 2).
+        max_duration : float
+            Maximum seconds to wait for/record speech before giving up (default 30).
 
         Returns
         -------
@@ -36,7 +49,9 @@ class AudioInput:
         """
         frames = []
         speech_started = False
+        speech_start_time = None
         silence_start = None
+        listen_start = time.time()
 
         with sd.RawInputStream(
             samplerate=self.SAMPLE_RATE,
@@ -45,6 +60,12 @@ class AudioInput:
             blocksize=self.FRAME_SAMPLES,
         ) as stream:
             while True:
+                # Absolute timeout guard – prevents an infinite loop when the
+                # microphone is silent the entire time.
+                if time.time() - listen_start >= max_duration:
+                    print('⚠️  Max recording duration reached.')
+                    break
+
                 data, _ = stream.read(self.FRAME_SAMPLES)
                 data = bytes(data)
 
@@ -56,16 +77,28 @@ class AudioInput:
 
                 if is_speech:
                     frames.append(data)
-                    speech_started = True
+                    if not speech_started:
+                        speech_started = True
+                        speech_start_time = time.time()
+                        print('🗣️  Speech detected, recording…')
                     silence_start = None
                 else:
                     if speech_started:
                         frames.append(data)
                         if silence_start is None:
                             silence_start = time.time()
-                        elif time.time() - silence_start >= self.silence_timeout:
-                            break
+                        else:
+                            elapsed_speech = time.time() - speech_start_time
+                            silence_elapsed = time.time() - silence_start
+                            # Honour min_duration: do not cut off before the
+                            # user has had a chance to finish a short word.
+                            if (elapsed_speech >= min_duration
+                                    and silence_elapsed >= self.silence_timeout):
+                                break
 
+        duration = len(frames) * self.FRAME_SAMPLES / self.SAMPLE_RATE
+        print(f'✅ Captured {len(frames) * self.FRAME_BYTES} bytes '
+              f'({duration:.2f} s) of audio.')
         return b''.join(frames)
 
     def _is_speech(self, frame):

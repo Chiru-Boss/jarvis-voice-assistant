@@ -104,13 +104,17 @@ def main():
                 print('❌ Could not understand audio. Try again.\n')
                 continue
 
+            print(f'✅ You said: {text}')
+
             # ── 3. Wake word check ────────────────────────────────────────
             if not listen_for_wake_word(text, CONFIG['WAKE_WORD']):
-                print(f'   (Heard: "{text}" – no wake word detected)\n')
+                wake_word_hint = CONFIG['WAKE_WORD'].capitalize()
+                print(f'   (No wake word detected – say "{wake_word_hint}" to activate)\n')
                 continue
 
+            print('✅ Wake word detected!')
+
             command = strip_wake_word(text, CONFIG['WAKE_WORD']).strip()
-            print(f'✅ You said: {text}\n')
 
             if not command:
                 print('🎤 Listening for your question…\n')
