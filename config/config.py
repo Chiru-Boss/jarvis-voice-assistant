@@ -31,7 +31,7 @@ CONFIG = {
     'SAMPLE_RATE': 16000,
     'CHANNELS': 1,
     'CHUNK_SIZE': 320,       # 20ms frames at 16kHz (required by webrtcvad)
-    'SILENCE_TIMEOUT': 5,    # seconds of silence before stopping
+    'SILENCE_TIMEOUT': 1.5,  # seconds of silence before stopping
     'VAD_AGGRESSIVENESS': 2, # 0-3, higher = more aggressive filtering
 
     # LLM settings
