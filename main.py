@@ -56,7 +56,7 @@ def handle_special_commands(text, memory):
     if text_lower in ('memory', 'history', 'status'):
         print(f'💾 Memory: {memory.summary()}\n')
         for i, conv in enumerate(memory.get_memory()[-5:], 1):
-            ts = conv.get('timestamp', '')[:19]
+            ts = conv.get('timestamp', 'N/A')[:19] or 'N/A'
             print(f'  [{i}] {ts}')
             print(f'       You: {conv["user_input"][:60]}')
             print(f'       JARVIS: {conv["bot_response"][:60]}')

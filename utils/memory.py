@@ -22,7 +22,9 @@ class ConversationMemory:
             try:
                 with open(self.memory_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                self.memory = data.get('conversations', [])
+                conversations = data.get('conversations', [])
+                # Enforce max_history at load time so the in-memory list is bounded
+                self.memory = conversations[-self.max_history:] if conversations else []
             except (json.JSONDecodeError, IOError):
                 self.memory = []
 

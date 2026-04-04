@@ -85,7 +85,8 @@ class AudioInput:
     def _is_speech(self, frame):
         try:
             return self.vad.is_speech(frame, self.SAMPLE_RATE)
-        except Exception:
+        except Exception as exc:
+            print(f"⚠️  VAD error (frame skipped): {exc}")
             return False
 
     def close(self):

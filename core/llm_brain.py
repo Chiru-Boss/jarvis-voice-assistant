@@ -61,7 +61,9 @@ def process_input(user_input, conversation_history=None,
         )
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
-        return f"API error {response.status_code}: {response.text[:200]}"
+        truncated = response.text[:200]
+        suffix = '…' if len(response.text) > 200 else ''
+        return f"API error {response.status_code}: {truncated}{suffix}"
     except requests.Timeout:
         return "Request timed out. Please try again."
     except Exception as e:

@@ -61,9 +61,14 @@ def speak(text, elevenlabs_api_key=None, elevenlabs_voice_id=None,
                             stderr=subprocess.DEVNULL,
                         )
                     return
-                except Exception:
-                    pass  # Fall through to pyttsx3
-        except Exception:
-            pass  # Fall through to pyttsx3
+                except Exception as exc:
+                    print(f"⚠️  Audio playback failed, falling back to pyttsx3: {exc}")
+            else:
+                print(
+                    f"⚠️  ElevenLabs API returned {response.status_code}, "
+                    "falling back to pyttsx3."
+                )
+        except Exception as exc:
+            print(f"⚠️  ElevenLabs TTS failed, falling back to pyttsx3: {exc}")
 
     _speak_pyttsx3(text)
