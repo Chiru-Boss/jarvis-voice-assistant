@@ -42,12 +42,15 @@ class ConversationMemory:
     # ------------------------------------------------------------------
 
     def add_conversation(self, user_input, bot_response):
-        """Add a user/assistant exchange and auto-save."""
+        """Add a user/assistant exchange, enforce max_history, and auto-save."""
         self.memory.append({
             'timestamp': datetime.now().isoformat(),
             'user_input': user_input,
             'bot_response': bot_response,
         })
+        # Keep the in-memory list bounded to max_history entries
+        if len(self.memory) > self.max_history:
+            self.memory = self.memory[-self.max_history:]
         self.save()
 
     def get_recent_messages(self, n=None):

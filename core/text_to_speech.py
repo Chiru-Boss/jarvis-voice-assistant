@@ -1,6 +1,9 @@
 import pyttsx3
 import requests
 
+# ElevenLabs API limits practical request size; truncate at 500 characters.
+ELEVENLABS_MAX_TEXT_LENGTH = 500
+
 
 def _speak_pyttsx3(text):
     """Speak *text* using the local pyttsx3 engine."""
@@ -39,7 +42,7 @@ def speak(text, elevenlabs_api_key=None, elevenlabs_voice_id=None,
                 'Content-Type': 'application/json',
             }
             payload = {
-                'text': text[:500],
+                'text': text[:ELEVENLABS_MAX_TEXT_LENGTH],
                 'model_id': elevenlabs_model,
                 'voice_settings': {'stability': 0.5, 'similarity_boost': 0.75},
             }

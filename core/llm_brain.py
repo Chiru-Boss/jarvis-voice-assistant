@@ -1,5 +1,7 @@
 import requests
 
+from utils.helpers import truncate
+
 NVIDIA_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
 
 SYSTEM_PROMPT = (
@@ -61,9 +63,7 @@ def process_input(user_input, conversation_history=None,
         )
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
-        truncated = response.text[:200]
-        suffix = '…' if len(response.text) > 200 else ''
-        return f"API error {response.status_code}: {truncated}{suffix}"
+        return f"API error {response.status_code}: {truncate(response.text, 200)}"
     except requests.Timeout:
         return "Request timed out. Please try again."
     except Exception as e:
