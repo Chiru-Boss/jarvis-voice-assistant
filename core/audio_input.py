@@ -18,7 +18,7 @@ class AudioInput:
     FRAME_SAMPLES = 320
     FRAME_BYTES = FRAME_SAMPLES * 2  # 16-bit = 2 bytes per sample
 
-    def __init__(self, vad_aggressiveness=2, silence_timeout=5):
+    def __init__(self, vad_aggressiveness=2, silence_timeout=1.5):
         self.vad = webrtcvad.Vad(vad_aggressiveness)
         self.silence_timeout = silence_timeout
 
@@ -26,7 +26,7 @@ class AudioInput:
     # Public API
     # ------------------------------------------------------------------
 
-    def listen(self, min_duration=2.0, max_duration=30.0):
+    def listen(self, min_duration=2.0, max_duration=10.0):
         """Block until speech is detected, then record until silence.
 
         At least *min_duration* seconds of audio are captured once speech
@@ -40,7 +40,7 @@ class AudioInput:
         min_duration : float
             Minimum seconds of audio to capture after speech starts (default 2).
         max_duration : float
-            Maximum seconds to wait for/record speech before giving up (default 30).
+            Maximum seconds to wait for/record speech before giving up (default 10).
 
         Returns
         -------
