@@ -146,8 +146,10 @@ def process_input(
             except json.JSONDecodeError:
                 arguments = {}
 
+            logger.info("Tool call: %s(%s)", tool_name, arguments)
             print(f'🔧 Tool call: {tool_name}({arguments})')
             tool_result = mcp_client.call_tool(tool_name, arguments)
+            logger.info("Tool result: %s", truncate(str(tool_result), 200))
             print(f'✅ Tool result: {truncate(str(tool_result), 200)}')
 
             messages.append({

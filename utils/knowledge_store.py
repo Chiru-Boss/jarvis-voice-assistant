@@ -50,8 +50,12 @@ class KnowledgeStore:
 
     def add(self, title: str, content: str, tags: List[str] | None = None) -> None:
         """Append a new entry and persist."""
+        # Use a monotonically increasing ID derived from the stored maximum,
+        # so IDs remain unique even if entries are removed.
+        existing_ids = [e.get('id', 0) for e in self._entries]
+        next_id = (max(existing_ids) + 1) if existing_ids else 1
         entry: Dict[str, Any] = {
-            'id': len(self._entries) + 1,
+            'id': next_id,
             'timestamp': datetime.now().isoformat(),
             'title': title,
             'content': content,

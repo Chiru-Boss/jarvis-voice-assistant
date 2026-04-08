@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import platform
+import subprocess
 from typing import Any, Dict
 
 from core.tool_registry import ToolRegistry
@@ -54,8 +55,6 @@ def take_screenshot(save_path: str = 'jarvis_screenshot.png') -> str:
 
 def control_system(action: str) -> str:
     """Perform a system control action: sleep or lock the computer."""
-    import subprocess  # noqa: PLC0415
-
     sys_name = platform.system()
     try:
         if action == 'sleep':

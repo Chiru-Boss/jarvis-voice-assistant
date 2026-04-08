@@ -36,7 +36,7 @@ from utils.memory import ConversationMemory
 # MCP initialisation
 # ---------------------------------------------------------------------------
 
-def init_mcp() -> MCPClient:
+_TOOL_DESC_DISPLAY_LEN = 60  # Characters to show for each tool description in the banner
     """Build the tool registry, start the MCP server, and return a client."""
     registry = build_registry()
     server = MCPServer(
@@ -104,7 +104,7 @@ def handle_special_commands(text: str, memory: ConversationMemory, mcp_client: M
         print(f'\n🔧 Available MCP Tools ({len(tools)}):')
         for tool in tools:
             fn = tool.get('function', {})
-            print(f'  • {fn.get("name", "?")} – {fn.get("description", "")[:60]}')
+            print(f'  • {fn.get("name", "?")} – {fn.get("description", "")[:_TOOL_DESC_DISPLAY_LEN]}')
         print()
         return True
 

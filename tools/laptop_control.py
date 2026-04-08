@@ -9,6 +9,9 @@ import subprocess
 
 from core.tool_registry import ToolRegistry
 
+# Maximum characters returned when reading a file (prevents overflowing LLM context).
+MAX_FILE_READ_CHARS = 2000
+
 
 # ------------------------------------------------------------------
 # Tool implementations
@@ -64,7 +67,7 @@ def file_operations(
             with open(path, 'r', encoding='utf-8') as fh:
                 text = fh.read()
             # Limit output so it fits comfortably inside an LLM context.
-            return text[:2000] if len(text) > 2000 else text
+            return text[:MAX_FILE_READ_CHARS] if len(text) > MAX_FILE_READ_CHARS else text
 
         elif operation == 'move':
             if not destination:
