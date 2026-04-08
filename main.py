@@ -37,6 +37,9 @@ from utils.memory import ConversationMemory
 # ---------------------------------------------------------------------------
 
 _TOOL_DESC_DISPLAY_LEN = 60  # Characters to show for each tool description in the banner
+
+
+def init_mcp() -> MCPClient:
     """Build the tool registry, start the MCP server, and return a client."""
     registry = build_registry()
     server = MCPServer(
