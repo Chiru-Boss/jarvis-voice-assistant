@@ -8,3 +8,5 @@ sounddevice
 soundfile
 numpy
 webrtcvad
+psutil
+Pillow
