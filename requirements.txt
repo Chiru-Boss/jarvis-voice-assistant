@@ -10,3 +10,8 @@ numpy
 webrtcvad
 psutil
 Pillow
+
+# Hand tracking (optional – required when HAND_TRACKING_ENABLED=true)
+mediapipe
+opencv-python
+pyautogui
