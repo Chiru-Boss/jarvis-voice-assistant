@@ -15,9 +15,13 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+# Add parent directory to path so we can import core modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 logger = logging.getLogger(__name__)
 
