@@ -11,6 +11,15 @@ Voice commands (after wake word):
   memory / history / status     – display memory summary
   clear / forget / reset        – erase conversation memory
   tools                         – list available MCP tools
+
+Hand tracking (optional – set HAND_TRACKING_ENABLED=true in .env):
+  Move index finger  → mouse pointer follows
+  Pinch              → left click
+  Open palm          → right click
+  Thumbs up          → re-activate voice listening
+  Peace sign         → take screenshot
+  Fist               → pause / freeze pointer
+  Swipe right/left   → scroll
 """
 
 import sys
@@ -21,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config.config import CONFIG
 from config.tools_config import TOOLS_CONFIG
+from config.hand_tracking_config import HAND_TRACKING_CONFIG
 from core.audio_input import AudioInput
 from core.speech_recognition import recognize_speech
 from core.wake_word import listen_for_wake_word, strip_wake_word
@@ -60,7 +70,7 @@ def init_mcp() -> MCPClient:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def startup_banner(memory: ConversationMemory, mcp_client: MCPClient) -> None:
+def startup_banner(memory: ConversationMemory, mcp_client: MCPClient, hand_enabled: bool = False) -> None:
     tool_count = len(mcp_client.get_available_tools())
     print('\n' + '=' * 70)
     print('         🤖 J.A.R.V.I.S 2.0 – PROFESSIONAL AI ASSISTANT 🤖')
@@ -73,6 +83,8 @@ def startup_banner(memory: ConversationMemory, mcp_client: MCPClient) -> None:
     print(f'✅ MCP Tool Server – {tool_count} tools registered')
     if TOOLS_CONFIG['APPROVAL_MODE']:
         print('🔒 Approval Mode – ON (destructive tools require confirmation)')
+    if hand_enabled:
+        print('🖐️  Hand Tracking – ACTIVE (camera feed opening…)')
     print(f'\n🔑 Wake word: "{CONFIG["WAKE_WORD"].capitalize()}"')
     print('💡 Commands after wake word: exit | memory | clear | tools')
     print('=' * 70 + '\n')
@@ -129,12 +141,59 @@ def main():
     )
     mcp_client = init_mcp()
 
-    startup_banner(memory, mcp_client)
+    # ── Hand tracking (optional) ───────────────────────────────────────
+    hand_integration = None
+    hand_enabled = HAND_TRACKING_CONFIG['HAND_TRACKING_ENABLED']
+
+    if hand_enabled:
+        try:
+            from core.hand_voice_integration import HandVoiceIntegration
+            from utils.calibration import load_calibration
+
+            # Screenshot callback wired to MCP tool
+            def _on_screenshot():
+                try:
+                    mcp_client.call_tool('take_screenshot', {})
+                except Exception:
+                    pass
+
+            # Apply saved calibration if available
+            cal_corners = load_calibration()
+            if cal_corners:
+                print('📐 Calibration data loaded.')
+
+            hand_integration = HandVoiceIntegration(
+                camera_device=HAND_TRACKING_CONFIG['CAMERA_DEVICE'],
+                detection_confidence=HAND_TRACKING_CONFIG['HAND_DETECTION_CONFIDENCE'],
+                tracking_confidence=HAND_TRACKING_CONFIG['HAND_TRACKING_CONFIDENCE'],
+                pinch_threshold=HAND_TRACKING_CONFIG['PINCH_THRESHOLD'],
+                smoothing=HAND_TRACKING_CONFIG['GESTURE_SMOOTHING'],
+                mouse_speed=HAND_TRACKING_CONFIG['MOUSE_SPEED'],
+                click_delay=HAND_TRACKING_CONFIG['CLICK_DELAY'],
+                gesture_cooldown=HAND_TRACKING_CONFIG['GESTURE_COOLDOWN'],
+                show_overlay=HAND_TRACKING_CONFIG['SHOW_HAND_OVERLAY'],
+                on_screenshot=_on_screenshot,
+                calibration_corners=cal_corners,
+            )
+
+            hand_integration.start()
+            print('🖐️  Hand tracking started.')
+        except Exception as exc:
+            print(f'⚠️  Hand tracking unavailable: {exc}')
+            hand_integration = None
+            hand_enabled = False
+
+    startup_banner(memory, mcp_client, hand_enabled=hand_enabled)
 
     try:
         while True:
             print('─' * 70)
-            print(f'👂 Waiting for wake word: say "{CONFIG["WAKE_WORD"].capitalize()}"…')
+            gesture_hint = ''
+            if hand_integration and hand_integration.is_running:
+                g = hand_integration.get_latest_gesture()
+                if g and g not in ('none', 'point'):
+                    gesture_hint = f' [Hand: {g}]'
+            print(f'👂 Waiting for wake word: say "{CONFIG["WAKE_WORD"].capitalize()}"…{gesture_hint}')
 
             # ── 1. Capture audio ──────────────────────────────────────────
             pcm_data = audio_input.listen()
@@ -173,7 +232,14 @@ def main():
             if handle_special_commands(command, memory, mcp_client):
                 continue
 
-            # ── 5. Get AI response (with MCP tool calling) ────────────────
+            # ── 5. Enrich command with gesture context ────────────────────
+            if hand_integration and hand_integration.is_running:
+                latest_gesture = hand_integration.get_latest_gesture()
+                if latest_gesture not in ('none', 'point', ''):
+                    command = f'{command} [hand gesture: {latest_gesture}]'
+                    print(f'🖐️  Combined with gesture: {latest_gesture}')
+
+            # ── 6. Get AI response (with MCP tool calling) ────────────────
             print('🧠 Thinking…\n')
             response = process_input(
                 user_input=command,
@@ -189,7 +255,7 @@ def main():
 
             print(f'🤖 JARVIS: {response}\n')
 
-            # ── 6. Speak ──────────────────────────────────────────────────
+            # ── 7. Speak ──────────────────────────────────────────────────
             if CONFIG['VOICE_ENABLED']:
                 print('🔊 Speaking…')
                 speak(
@@ -199,7 +265,7 @@ def main():
                     elevenlabs_model=CONFIG['ELEVENLABS_MODEL'],
                 )
 
-            # ── 7. Save to memory ─────────────────────────────────────────
+            # ── 8. Save to memory ─────────────────────────────────────────
             memory.add_conversation(command, response)
             print(f'💾 Memory: {memory.summary()}\n')
 
@@ -207,6 +273,8 @@ def main():
         print('\n\n🛑 JARVIS shutting down. Goodbye! 👋\n')
     finally:
         audio_input.close()
+        if hand_integration:
+            hand_integration.stop()
 
 
 if __name__ == '__main__':
