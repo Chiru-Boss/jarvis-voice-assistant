@@ -45,7 +45,7 @@ def run_calibration(
     """Run the interactive calibration wizard.
 
     The user holds their index finger at each screen corner when prompted.
-    Captured positions are averaged over a short window to reduce jitter.
+    Captured positions are averaged over a 10-second window to reduce jitter.
 
     Returns
     -------
@@ -78,33 +78,35 @@ def run_calibration(
 
     corners: List[Tuple[float, float]] = []
 
+    cv2.namedWindow('JARVIS Calibration', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('JARVIS Calibration', 960, 540)
+
     try:
         for corner_name in _CORNER_NAMES:
             print(f'\n📍 Point your index finger at the {corner_name}.')
-            print('   Hold still for 2 seconds… ', end='', flush=True)
+            print('   Hold still for 10 seconds… ', end='', flush=True)
 
             samples: List[Tuple[float, float]] = []
-            deadline = time.time() + 4.0   # 4 s window (first 2 s warm-up, 2 s capture)
+            capture_duration = 10.0  # seconds to collect samples
+            deadline = time.time() + capture_duration
 
             while time.time() < deadline:
                 ret, frame = cap.read()
                 if not ret:
                     continue
 
+                remaining = max(0.0, deadline - time.time())
                 hands = tracker.process_frame(frame)
-                if not hands:
-                    continue
+                idx_tip = None
+                if hands:
+                    idx_tip = hands[0].index_tip()
 
-                idx_tip = hands[0].index_tip()
-                if idx_tip is None:
-                    continue
-
-                elapsed = deadline - time.time()
-                if elapsed < 2.0:          # last 2 s → collect samples
+                if idx_tip is not None:
                     samples.append((idx_tip.x, idx_tip.y))
 
-                # Simple overlay
+                # Build overlay
                 h, w = frame.shape[:2]
+                # Instruction line
                 cv2.putText(
                     frame,
                     f'Point at {corner_name}',
@@ -112,6 +114,42 @@ def run_calibration(
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1.0,
                     (0, 255, 0),
+                    2,
+                )
+                # Countdown timer
+                cv2.putText(
+                    frame,
+                    f'Time remaining: {remaining:.1f}s',
+                    (20, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.9,
+                    (0, 200, 255),
+                    2,
+                )
+                # Hand detection status
+                if idx_tip is not None:
+                    status_text = 'Hand detected \u2713'
+                    status_color = (0, 255, 0)
+                else:
+                    status_text = 'Detecting hand...'
+                    status_color = (0, 100, 255)
+                cv2.putText(
+                    frame,
+                    status_text,
+                    (20, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    status_color,
+                    2,
+                )
+                # Samples collected so far
+                cv2.putText(
+                    frame,
+                    f'Samples: {len(samples)}',
+                    (20, 195),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (200, 200, 200),
                     2,
                 )
                 cv2.imshow('JARVIS Calibration', frame)
