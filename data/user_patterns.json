@@ -1,0 +1,18 @@
+{
+  "apps": {},
+  "searches": {},
+  "workflows": [],
+  "time_patterns": {
+    "morning": [],
+    "afternoon": [],
+    "evening": [],
+    "night": []
+  },
+  "context": {
+    "current_app": "",
+    "recent_commands": [],
+    "user_preferences": {}
+  },
+  "command_history": [],
+  "last_updated": null
+}

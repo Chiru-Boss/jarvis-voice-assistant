@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config.config import CONFIG
 from config.tools_config import TOOLS_CONFIG
 from config.hand_tracking_config import HAND_TRACKING_CONFIG
+from core.adaptive_agent import AdaptiveAgent
 from core.audio_input import AudioInput
 from core.speech_recognition import recognize_speech
 from core.wake_word import listen_for_wake_word, strip_wake_word
@@ -49,9 +50,14 @@ from utils.memory import ConversationMemory
 _TOOL_DESC_DISPLAY_LEN = 60  # Characters to show for each tool description in the banner
 
 
-def init_mcp() -> MCPClient:
-    """Build the tool registry, start the MCP server, and return a client."""
+def init_mcp(agent: AdaptiveAgent) -> MCPClient:
+    """Build the tool registry, inject the adaptive agent, start the MCP server, and return a client."""
     registry = build_registry()
+
+    # Wire the shared agent into system_tools so its new MCP tools work.
+    from tools import system_tools
+    system_tools.inject_agent(agent)
+
     server = MCPServer(
         registry=registry,
         approval_mode=TOOLS_CONFIG['APPROVAL_MODE'],
@@ -70,10 +76,10 @@ def init_mcp() -> MCPClient:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def startup_banner(memory: ConversationMemory, mcp_client: MCPClient, hand_enabled: bool = False) -> None:
+def startup_banner(memory: ConversationMemory, mcp_client: MCPClient, hand_enabled: bool = False, agent: AdaptiveAgent = None) -> None:
     tool_count = len(mcp_client.get_available_tools())
     print('\n' + '=' * 70)
-    print('         🤖 J.A.R.V.I.S 2.0 – PROFESSIONAL AI ASSISTANT 🤖')
+    print('         🤖 J.A.R.V.I.S 2.0 – AUTONOMOUS AI AGENT 🤖')
     print('=' * 70)
     print('\n⚡ Initializing systems…')
     print('✅ NVIDIA Llama – Online')
@@ -81,16 +87,21 @@ def startup_banner(memory: ConversationMemory, mcp_client: MCPClient, hand_enabl
     print('✅ Text-to-Speech – Ready')
     print(f'✅ Persistent Memory – {memory.summary()}')
     print(f'✅ MCP Tool Server – {tool_count} tools registered')
+    if agent:
+        print('✅ Adaptive Agent – Active (pattern learning enabled)')
+        print('✅ Screen Vision – Ready')
+        print('✅ App Controller – Ready')
+        print('✅ System Executor – Ready')
     if TOOLS_CONFIG['APPROVAL_MODE']:
         print('🔒 Approval Mode – ON (destructive tools require confirmation)')
     if hand_enabled:
-        print('🖐️  Hand Tracking – ACTIVE (camera feed opening…)')
+        print('🖐️  Hand Tracking – ACTIVE (hologram cursor enabled)')
     print(f'\n🔑 Wake word: "{CONFIG["WAKE_WORD"].capitalize()}"')
-    print('💡 Commands after wake word: exit | memory | clear | tools')
+    print('💡 Commands after wake word: exit | memory | clear | tools | patterns | predict')
     print('=' * 70 + '\n')
 
 
-def handle_special_commands(text: str, memory: ConversationMemory, mcp_client: MCPClient) -> bool:
+def handle_special_commands(text: str, memory: ConversationMemory, mcp_client: MCPClient, agent: AdaptiveAgent = None) -> bool:
     """Check for built-in commands.  Return True if handled, False otherwise."""
     text_lower = text.lower().strip()
 
@@ -123,6 +134,24 @@ def handle_special_commands(text: str, memory: ConversationMemory, mcp_client: M
         print()
         return True
 
+    if text_lower in ('patterns', 'show patterns', 'learned patterns') and agent:
+        summary = agent.memory.get_all_patterns()
+        print('\n🧠 Learned Patterns:')
+        print(f"  Top apps: {', '.join(summary.get('top_apps', [])) or 'none yet'}")
+        print(f"  Top searches: {', '.join(summary.get('top_searches', [])) or 'none yet'}")
+        print(f"  Recent commands: {', '.join(summary.get('recent_commands', [])[-5:]) or 'none'}")
+        wf = summary.get('top_workflows', [])
+        if wf:
+            print(f"  Top workflow: {wf[0].get('sequence', [])} (x{wf[0].get('frequency', 0)})")
+        print()
+        return True
+
+    if text_lower in ('predict', 'what next', 'predictions') and agent:
+        recent = agent.memory.get_recent_commands(1)
+        last_cmd = recent[-1] if recent else None
+        print('\n' + agent.predictor.predict_action_text(last_command=last_cmd) + '\n')
+        return True
+
     return False
 
 
@@ -139,7 +168,13 @@ def main():
         vad_aggressiveness=CONFIG['VAD_AGGRESSIVENESS'],
         silence_timeout=CONFIG['SILENCE_TIMEOUT'],
     )
-    mcp_client = init_mcp()
+
+    # ── Adaptive AI Agent (pattern learning + screen vision) ──────────
+    print('🤖 Initialising Adaptive Agent…')
+    agent = AdaptiveAgent()
+    print('✅ Adaptive Agent ready.')
+
+    mcp_client = init_mcp(agent)
 
     # ── Hand tracking (optional) ───────────────────────────────────────
     hand_integration = None
@@ -183,7 +218,7 @@ def main():
             hand_integration = None
             hand_enabled = False
 
-    startup_banner(memory, mcp_client, hand_enabled=hand_enabled)
+    startup_banner(memory, mcp_client, hand_enabled=hand_enabled, agent=agent)
 
     try:
         while True:
@@ -229,7 +264,7 @@ def main():
                 print(f'✅ You said: {command}\n')
 
             # ── 4. Special commands ───────────────────────────────────────
-            if handle_special_commands(command, memory, mcp_client):
+            if handle_special_commands(command, memory, mcp_client, agent=agent):
                 continue
 
             # ── 5. Enrich command with gesture context ────────────────────
@@ -238,8 +273,27 @@ def main():
                 if latest_gesture not in ('none', 'point', ''):
                     command = f'{command} [hand gesture: {latest_gesture}]'
                     print(f'🖐️  Combined with gesture: {latest_gesture}')
+                    # Feed gesture into pattern learning.
+                    agent.learn_from_gesture(latest_gesture)
 
-            # ── 6. Get AI response (with MCP tool calling) ────────────────
+            # ── 6. Adaptive agent pre-processing ─────────────────────────
+            # Run the agent's intent detection (app open/close, search, etc.)
+            # so that patterns are recorded before the LLM is consulted.
+            agent_result = agent.process_command(command)
+            if agent_result.get('result'):
+                print(f'🤖 Agent action: {agent_result["result"]}')
+
+            # Show predictions to help the user (non-intrusive).
+            predictions = agent_result.get('predictions', [])
+            if predictions:
+                top = predictions[0]
+                pct = int(top['confidence'] * 100)
+                print(f'🔮 Prediction: {top["action"]} ({pct}%) – {top["reason"]}')
+
+            # Build pattern context for the LLM.
+            pattern_hint = agent.get_pattern_summary()
+
+            # ── 7. Get AI response (with MCP tool calling) ────────────────
             print('🧠 Thinking…\n')
             response = process_input(
                 user_input=command,
@@ -251,11 +305,12 @@ def main():
                 timeout=CONFIG['REQUEST_TIMEOUT'],
                 mcp_client=mcp_client,
                 max_tool_iterations=TOOLS_CONFIG['MAX_TOOL_ITERATIONS'],
+                pattern_hint=pattern_hint,
             )
 
             print(f'🤖 JARVIS: {response}\n')
 
-            # ── 7. Speak ──────────────────────────────────────────────────
+            # ── 8. Speak ──────────────────────────────────────────────────
             if CONFIG['VOICE_ENABLED']:
                 print('🔊 Speaking…')
                 speak(
@@ -265,7 +320,7 @@ def main():
                     elevenlabs_model=CONFIG['ELEVENLABS_MODEL'],
                 )
 
-            # ── 8. Save to memory ─────────────────────────────────────────
+            # ── 9. Save to memory ─────────────────────────────────────────
             memory.add_conversation(command, response)
             print(f'💾 Memory: {memory.summary()}\n')
 
