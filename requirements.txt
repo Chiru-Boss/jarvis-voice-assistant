@@ -17,5 +17,10 @@ opencv-python
 pyautogui
 
 # AI Agent – screen vision OCR (optional – install one for OCR support)
-# pytesseract   # requires Tesseract binary: https://github.com/tesseract-ocr/tesseract
-# easyocr       # GPU-accelerated OCR alternative (larger download)
+pytesseract   # requires Tesseract binary: https://github.com/tesseract-ocr/tesseract
+# easyocr     # GPU-accelerated OCR alternative (larger download)
+
+# Browser & system automation
+selenium
+# webdriver-manager  # optional: auto-downloads ChromeDriver for Selenium
+pynput

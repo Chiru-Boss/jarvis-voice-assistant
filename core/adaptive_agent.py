@@ -23,10 +23,12 @@ from typing import Any, Dict, List, Optional
 
 from core.app_controller import AppController
 from core.behavior_learner import BehaviorLearner
+from core.browser_automation import BrowserAutomation
 from core.pattern_memory import PatternMemory
 from core.prediction_engine import PredictionEngine
 from core.screen_vision import ScreenVision
 from core.system_executor import SystemExecutor
+from utils.app_finder import is_browser
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,7 @@ class AdaptiveAgent:
         self._vision = ScreenVision()
         self._app_ctrl = AppController()
         self._executor = SystemExecutor()
+        self._browser = BrowserAutomation()
 
         # Rolling workflow tracking: accumulate recent commands.
         self._recent_workflow: List[str] = []
@@ -124,6 +127,14 @@ class AdaptiveAgent:
         open_match = _APP_OPEN_PATTERNS.search(command)
         if open_match:
             target_app = open_match.group(1).strip().rstrip('.')
+            # Trim trailing conjunction words captured by the greedy pattern
+            # e.g. "open Brave and search for news" → target_app = "Brave"
+            target_app = re.sub(
+                r'\s+\b(?:and|then|to|for|,)\b.*$',
+                '',
+                target_app,
+                flags=re.IGNORECASE,
+            ).strip()
             result_text = self._app_ctrl.open_app(target_app)
             app_opened = target_app
 
@@ -139,7 +150,28 @@ class AdaptiveAgent:
         if search_match:
             search_term = search_match.group(1).strip()
             self._memory.record_search(search_term)
-            if not result_text:
+
+            # Determine the target browser (just opened, or already running).
+            browser_target: Optional[str] = None
+            if app_opened and is_browser(app_opened):
+                browser_target = app_opened
+            elif self._app_ctrl.is_app_running('brave'):
+                browser_target = 'brave'
+            elif self._app_ctrl.is_app_running('chrome'):
+                browser_target = 'chrome'
+            elif self._app_ctrl.is_app_running('firefox'):
+                browser_target = 'firefox'
+            elif self._app_ctrl.is_app_running('msedge'):
+                browser_target = 'edge'
+
+            if browser_target:
+                # Actually perform the search inside the running browser.
+                search_result = self._browser.search(search_term, browser_target)
+                if result_text:
+                    result_text = f"{result_text}\n{search_result}"
+                else:
+                    result_text = search_result
+            elif not result_text:
                 result_text = f"📝 Search term noted: '{search_term}'."
 
         # ── 4. Shell command intent ──────────────────────────────────────
