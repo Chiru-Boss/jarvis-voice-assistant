@@ -31,13 +31,15 @@ from core.adaptive_agent import AdaptiveAgent
 
 def _make_memory() -> PatternMemory:
     """Return a fresh in-memory PatternMemory backed by a temp file."""
-    tmp = tempfile.mktemp(suffix='.json')
+    fd, tmp = tempfile.mkstemp(suffix='.json')
+    os.close(fd)
     return PatternMemory(db_path=tmp)
 
 
 def _make_agent() -> AdaptiveAgent:
     """Return a fresh AdaptiveAgent backed by a temp pattern DB."""
-    tmp = tempfile.mktemp(suffix='.json')
+    fd, tmp = tempfile.mkstemp(suffix='.json')
+    os.close(fd)
     return AdaptiveAgent(pattern_db_path=tmp)
 
 
@@ -187,7 +189,8 @@ class TestPatternMemory(unittest.TestCase):
     # ── Persistence ───────────────────────────────────────────────────────
 
     def test_save_and_reload(self):
-        tmp = tempfile.mktemp(suffix='.json')
+        fd, tmp = tempfile.mkstemp(suffix='.json')
+        os.close(fd)
         try:
             m1 = PatternMemory(db_path=tmp)
             m1.record_app_open('brave')
