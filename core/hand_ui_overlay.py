@@ -1,7 +1,8 @@
 """Hand UI Overlay – real-time webcam feed with hand skeleton and HUD.
 
 Draws the MediaPipe hand skeleton, gesture label, confidence, FPS counter,
-and mouse-pointer position over the live webcam frame in an OpenCV window.
+mouse-pointer position, and the swipe-keyboard overlay over the live webcam
+frame in an OpenCV window.
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ _BLACK   = (0,   0,    0)
 _RED     = (0,   0,    255)
 _YELLOW  = (0,   255,  255)
 _MAGENTA = (255, 0,    255)
+_ORANGE  = (0,   165,  255)
+_BLUE    = (255, 100,  30)
 
 
 class HandUIOverlay:
@@ -72,6 +75,7 @@ class HandUIOverlay:
         gesture_confidence: float = 1.0,
         mouse_pos: Optional[Tuple[int, int]] = None,
         paused: bool = False,
+        swipe_state=None,
     ):
         """Draw overlay elements and display the frame.
 
@@ -91,13 +95,24 @@ class HandUIOverlay:
             Current mouse pixel position to display.
         paused : bool
             When True, shows a PAUSED banner.
+        swipe_state : SwipeOverlayState or None
+            Current swipe-keyboard state; when provided the keyboard overlay is drawn.
         """
         cv2 = self._cv2
+
+        # ── Swipe keyboard overlay (drawn before skeleton so keys appear underneath)
+        if swipe_state is not None:
+            self._draw_keyboard(frame, swipe_state)
 
         # ── Draw skeleton for each hand ────────────────────────────────
         for hand in hands:
             tracker.draw_landmarks(frame, hand)
             self._draw_fingertip_markers(frame, hand)
+
+        # ── Swipe path & word (drawn after skeleton so it appears on top)
+        if swipe_state is not None and swipe_state.is_active:
+            self._draw_swipe_path(frame, swipe_state)
+            self._draw_swipe_word(frame, swipe_state)
 
         # ── HUD elements ───────────────────────────────────────────────
         self._draw_hud(
@@ -106,6 +121,7 @@ class HandUIOverlay:
             gesture_confidence=gesture_confidence,
             mouse_pos=mouse_pos,
             paused=paused,
+            swipe_active=(swipe_state is not None and swipe_state.is_active),
         )
 
         # ── FPS ────────────────────────────────────────────────────────
@@ -154,6 +170,7 @@ class HandUIOverlay:
         gesture_confidence: float,
         mouse_pos: Optional[Tuple[int, int]],
         paused: bool,
+        swipe_active: bool = False,
     ) -> None:
         cv2 = self._cv2
         h, w = frame.shape[:2]
@@ -211,19 +228,140 @@ class HandUIOverlay:
 
         # ── Gesture guide (bottom strip) ──────────────────────────────
         guide_y = h - 10
-        guide = (
-            'Pinch=Click  Palm=RClick  Peace=Screenshot  '
-            'ThumbUp=Cmd  Fist=Pause  Swipe=Scroll'
-        )
+        if swipe_active:
+            guide = 'SWIPE TYPING  –  Hold key >1s to repeat  |  Release pinch to confirm word'
+            guide_color = _ORANGE
+        else:
+            guide = (
+                'Pinch=Swipe-Type  Palm=RClick  Peace=Screenshot  '
+                'ThumbUp=Cmd  Fist=Pause  Swipe=Scroll'
+            )
+            guide_color = _WHITE
         cv2.putText(
             frame,
             guide,
             (5, guide_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.38,
-            _WHITE,
+            guide_color,
             1,
         )
+
+    def _draw_keyboard(self, frame, swipe_state) -> None:
+        """Draw the QWERTY keyboard overlay at the bottom of *frame*."""
+        cv2 = self._cv2
+        h, w = frame.shape[:2]
+
+        # ── Semi-transparent keyboard background ───────────────────────
+        kb_overlay = frame.copy()
+        # Keyboard starts at the first row's top y
+        top_y_norm = swipe_state.key_cells[0].y_center - swipe_state.key_cells[0].y_half * 2
+        top_y_px = int(top_y_norm * h)
+        cv2.rectangle(kb_overlay, (0, top_y_px), (w, h), (20, 20, 20), -1)
+        cv2.addWeighted(kb_overlay, 0.55, frame, 0.45, 0, frame)
+
+        # ── Draw each key ──────────────────────────────────────────────
+        for cell in swipe_state.key_cells:
+            cx = int(cell.x_center * w)
+            cy = int(cell.y_center * h)
+            half_w = int(cell.x_half * w) - 2   # small gap between keys
+            half_h = int(cell.y_half * h)
+
+            is_highlighted = (
+                swipe_state.is_active
+                and cell.label == swipe_state.highlighted_key
+            )
+
+            if is_highlighted:
+                bg_color  = _ORANGE
+                txt_color = _BLACK
+                thickness = -1
+            else:
+                bg_color  = (60, 60, 60)
+                txt_color = _WHITE
+                thickness = -1
+
+            # Key background
+            pt1 = (cx - half_w, cy - half_h)
+            pt2 = (cx + half_w, cy + half_h)
+            cv2.rectangle(frame, pt1, pt2, bg_color, thickness)
+            cv2.rectangle(frame, pt1, pt2, (120, 120, 120), 1)
+
+            # Key label (abbreviated for wide keys)
+            label = cell.label
+            if label == 'SPACE':
+                label = 'SPC'
+            elif label == 'ENTER':
+                label = 'ENT'
+            font_scale = 0.38 if len(label) > 1 else 0.45
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
+            tx = cx - tw // 2
+            ty = cy + th // 2
+            cv2.putText(frame, label, (tx, ty),
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, txt_color, 1)
+
+    def _draw_swipe_path(self, frame, swipe_state) -> None:
+        """Draw the finger's swipe trail on *frame*."""
+        cv2 = self._cv2
+        h, w = frame.shape[:2]
+        path = swipe_state.path
+        if len(path) < 2:
+            return
+
+        for i in range(1, len(path)):
+            x0, y0 = int(path[i - 1][0] * w), int(path[i - 1][1] * h)
+            x1, y1 = int(path[i][0] * w),     int(path[i][1] * h)
+            # Gradient from cyan (older) to orange (newer)
+            t = i / len(path)
+            b = int(255 * (1 - t))
+            g = int(200 * (1 - t) + 165 * t)
+            r = int(255 * t)
+            color = (b, g, r)
+            cv2.line(frame, (x0, y0), (x1, y1), color, 3, cv2.LINE_AA)
+
+        # Draw a bright dot at the current fingertip position
+        lx, ly = int(path[-1][0] * w), int(path[-1][1] * h)
+        cv2.circle(frame, (lx, ly), 7, _ORANGE, -1)
+        cv2.circle(frame, (lx, ly), 9, _WHITE, 2)
+
+    def _draw_swipe_word(self, frame, swipe_state) -> None:
+        """Draw the current raw word and correction suggestion on *frame*."""
+        cv2 = self._cv2
+        h, w = frame.shape[:2]
+
+        raw        = swipe_state.raw_word.upper()
+        suggestion = swipe_state.suggestion.upper()
+
+        # Box in the middle of the frame, above the keyboard
+        box_y = int(0.55 * h)
+        box_x = int(0.02 * w)
+
+        bg = frame.copy()
+        cv2.rectangle(bg, (box_x, box_y - 30), (box_x + int(w * 0.96), box_y + 10), _BLACK, -1)
+        cv2.addWeighted(bg, 0.5, frame, 0.5, 0, frame)
+
+        # Raw sequence
+        cv2.putText(
+            frame,
+            f'Typing: {raw}',
+            (box_x + 4, box_y - 8),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            _CYAN,
+            1,
+        )
+
+        # Suggestion (only if different from raw)
+        if suggestion and suggestion != raw:
+            cv2.putText(
+                frame,
+                f'  → {suggestion}',
+                (box_x + 4 + int(w * 0.38), box_y - 8),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                _GREEN,
+                1,
+            )
 
     def _update_fps(self) -> None:
         self._fps_cnt += 1
