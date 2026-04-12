@@ -21,6 +21,9 @@ env/
 jarvis_memory.json
 temp_audio.wav
 jarvis_response.mp3
+jarvis_screenshot.png
+*.jarvis_bak
+*.jarvis_deleted_bak
 
 # IDE
 .vscode/

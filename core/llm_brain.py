@@ -66,6 +66,7 @@ def process_input(
     timeout: int = 60,
     mcp_client=None,
     max_tool_iterations: int = 5,
+    pattern_hint: str = '',
 ) -> str:
     """Send *user_input* to the NVIDIA Llama endpoint and return the response.
 
@@ -95,13 +96,24 @@ def process_input(
     max_tool_iterations : int
         Maximum number of tool-calling rounds before returning a fallback
         message (prevents infinite loops).
+    pattern_hint : str
+        Optional string summarising learned user patterns to include in the
+        system prompt (e.g. "Most-used apps: brave, vscode; Common searches: python").
 
     Returns
     -------
     str
         The assistant's final reply, or an error description on failure.
     """
-    messages: List[Dict[str, Any]] = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+    # Build system prompt, optionally enriched with pattern context.
+    system_content = SYSTEM_PROMPT
+    if pattern_hint:
+        system_content = (
+            SYSTEM_PROMPT
+            + f"\n\nUser behaviour context (use to personalise responses): {pattern_hint}"
+        )
+
+    messages: List[Dict[str, Any]] = [{'role': 'system', 'content': system_content}]
 
     if conversation_history:
         messages.extend(conversation_history)
