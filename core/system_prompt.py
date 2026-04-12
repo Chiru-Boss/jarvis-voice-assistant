@@ -28,7 +28,11 @@ SYSTEM_PROMPT = (
     "10. get_patterns() – Return learned user behaviour patterns "
     "(most-used apps, frequent searches, workflows).\n"
     "11. predict_action(last_command) – Predict the next likely user action based on "
-    "learned patterns.\n\n"
+    "learned patterns.\n"
+    "12. execute_command(command) – Execute a shell/system command and return its output. "
+    "Dangerous commands are automatically blocked.\n"
+    "13. file_operations(operation, path, destination, content) – Perform file-system "
+    "operations: read, write, delete, move, copy, or list.\n\n"
 
     "STEP-BY-STEP PROCESS FOR COMPUTER CONTROL:\n"
     "When the user asks you to do something on the computer, follow these steps:\n\n"

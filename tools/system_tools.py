@@ -184,6 +184,69 @@ def press_key(key: str) -> str:
     return _adaptive_agent.app_controller.press_key(key)
 
 
+def execute_command(command: str) -> str:
+    """Execute a shell command and return its output.
+
+    Dangerous commands (e.g. ``rm -rf /``, ``format c:``) are blocked by the
+    :class:`~core.system_executor.SystemExecutor` safety list.
+    """
+    if _adaptive_agent is None:
+        from core.system_executor import SystemExecutor
+        return SystemExecutor().execute_command(command)
+    return _adaptive_agent.executor.execute_command(command)
+
+
+def file_operations(
+    operation: str,
+    path: str,
+    destination: str = '',
+    content: str = '',
+) -> str:
+    """Perform a file-system operation.
+
+    Parameters
+    ----------
+    operation : str
+        One of ``read``, ``write``, ``delete``, ``move``, ``copy``, ``list``.
+    path : str
+        Source file or directory path.
+    destination : str
+        Target path (required for ``move`` and ``copy``).
+    content : str
+        Text to write (required for ``write``).
+
+    Returns a human-readable status string.
+    """
+    if _adaptive_agent is None:
+        from core.system_executor import SystemExecutor
+        executor = SystemExecutor()
+    else:
+        executor = _adaptive_agent.executor
+
+    op = operation.lower().strip()
+    if op == 'read':
+        return executor.read_file(path)
+    elif op == 'write':
+        return executor.write_file(path, content)
+    elif op == 'delete':
+        return executor.delete_file(path)
+    elif op == 'move':
+        if not destination:
+            return "❌ 'destination' is required for the move operation."
+        return executor.move_file(path, destination)
+    elif op == 'copy':
+        if not destination:
+            return "❌ 'destination' is required for the copy operation."
+        return executor.copy_file(path, destination)
+    elif op == 'list':
+        return executor.list_directory(path)
+    else:
+        return (
+            f"❌ Unknown file operation '{operation}'. "
+            "Supported: read, write, delete, move, copy, list."
+        )
+
+
 # ------------------------------------------------------------------
 # Registration
 # ------------------------------------------------------------------
@@ -404,4 +467,60 @@ def register_tools(registry: ToolRegistry) -> None:
         },
         func=predict_action,
         safe=True,
+    )
+
+    registry.register(
+        name='execute_command',
+        description=(
+            'Execute a shell / system command and return its output. '
+            'Dangerous commands (rm -rf /, format, etc.) are automatically blocked. '
+            'Use for running scripts, querying system state, or any CLI operation.'
+        ),
+        parameters={
+            'type': 'object',
+            'properties': {
+                'command': {
+                    'type': 'string',
+                    'description': 'Shell command to execute (e.g. "ls -la", "dir", "python script.py").',
+                },
+            },
+            'required': ['command'],
+        },
+        func=execute_command,
+        safe=False,
+        requires_approval=True,
+    )
+
+    registry.register(
+        name='file_operations',
+        description=(
+            'Perform file-system operations: read, write, delete, move, copy, or list. '
+            'For write, provide the content. For move/copy, provide the destination path.'
+        ),
+        parameters={
+            'type': 'object',
+            'properties': {
+                'operation': {
+                    'type': 'string',
+                    'enum': ['read', 'write', 'delete', 'move', 'copy', 'list'],
+                    'description': 'File operation to perform.',
+                },
+                'path': {
+                    'type': 'string',
+                    'description': 'Source file or directory path.',
+                },
+                'destination': {
+                    'type': 'string',
+                    'description': 'Target path (required for move and copy operations).',
+                },
+                'content': {
+                    'type': 'string',
+                    'description': 'Text content to write (required for write operation).',
+                },
+            },
+            'required': ['operation', 'path'],
+        },
+        func=file_operations,
+        safe=False,
+        requires_approval=True,
     )
