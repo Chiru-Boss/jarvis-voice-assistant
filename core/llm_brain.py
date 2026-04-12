@@ -6,20 +6,12 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+from core.system_prompt import SYSTEM_PROMPT
 from utils.helpers import truncate
 
 logger = logging.getLogger(__name__)
 
 NVIDIA_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-
-SYSTEM_PROMPT = (
-    "You are JARVIS, a professional and highly capable AI assistant with access to "
-    "powerful tools. When a user asks something that requires real-time data, system "
-    "access, file operations, or knowledge retrieval, use the appropriate tool. "
-    "For conversational questions or general knowledge, respond directly without tools. "
-    "Keep responses concise (2-4 sentences) and suitable for voice output. "
-    "Always be professional, accurate, and helpful."
-)
 
 
 def _call_api(
