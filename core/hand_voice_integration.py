@@ -6,6 +6,7 @@ This module owns the hand-tracking loop and exposes a small API that
 1. Start / stop the background thread.
 2. Query the latest gesture for combined hand + voice commands.
 3. Handle gesture-triggered actions (click, screenshot, scroll …).
+4. Run the swipe-keyboard overlay (pinch to type words in air).
 """
 
 from __future__ import annotations
@@ -46,6 +47,10 @@ class HandVoiceIntegration:
         (signature: ``on_voice_trigger() -> None``).
     on_screenshot : callable or None
         Callback invoked on the "peace" gesture.
+    on_word_typed : callable or None
+        Callback invoked when a swipe-typing word is completed
+        (signature: ``on_word_typed(word: str) -> None``).
+        When *None*, the completed word is typed directly via pyautogui.
     """
 
     def __init__(
@@ -61,6 +66,7 @@ class HandVoiceIntegration:
         show_overlay: bool = True,
         on_voice_trigger: Optional[Callable] = None,
         on_screenshot:    Optional[Callable] = None,
+        on_word_typed:    Optional[Callable] = None,
         calibration_corners: Optional[list] = None,
     ) -> None:
         self._camera_device         = camera_device
@@ -74,6 +80,7 @@ class HandVoiceIntegration:
         self._show_overlay          = show_overlay
         self._on_voice_trigger      = on_voice_trigger
         self._on_screenshot         = on_screenshot
+        self._on_word_typed         = on_word_typed
         self._calibration_corners   = calibration_corners
 
         # Thread state
@@ -146,6 +153,7 @@ class HandVoiceIntegration:
             from core.gesture_recognition  import GestureRecognizer
             from core.hand_mouse_controller import HandMouseController
             from core.hand_ui_overlay      import HandUIOverlay
+            from core.swipe_keyboard       import SwipeKeyboard
         except Exception as exc:
             logger.error('Failed to import hand-tracking modules: %s', exc)
             return
@@ -168,6 +176,7 @@ class HandVoiceIntegration:
             mouse_ctrl.set_calibration(self._calibration_corners)
             logger.info('Calibration applied to mouse controller.')
         overlay    = HandUIOverlay() if self._show_overlay else None
+        swipe_kb   = SwipeKeyboard()
 
         cap = cv2.VideoCapture(self._camera_device)
         if not cap.isOpened():
@@ -179,6 +188,7 @@ class HandVoiceIntegration:
 
         gesture_name  = 'none'
         mouse_pos: Optional[tuple] = None
+        was_pinching: bool = False
 
         try:
             while not self._stop_event.is_set():
@@ -201,15 +211,53 @@ class HandVoiceIntegration:
                     with self._gesture_lock:
                         self._latest_gesture = gesture_name
 
-                    # ── Mouse / gesture actions ──────────────────────────
-                    self._dispatch_gesture(gesture_name, hand, mouse_ctrl)
+                    # ── Raw pinch detection (threshold on distance) ──────
+                    lm = hand.landmarks
+                    is_pinching = False
+                    if len(lm) > 8:
+                        thumb = lm[4]
+                        index = lm[8]
+                        dx = thumb.x - index.x
+                        dy = thumb.y - index.y
+                        pinch_dist = (dx * dx + dy * dy) ** 0.5
+                        is_pinching = pinch_dist < self._pinch_threshold
+
+                    # ── Swipe keyboard state machine ─────────────────────
+                    idx_tip = hand.index_tip()
+                    if idx_tip is not None:
+                        if is_pinching and not was_pinching:
+                            # Only enter swipe mode if finger is over the keyboard
+                            if swipe_kb._nearest_key(idx_tip.x, idx_tip.y) is not None:
+                                swipe_kb.begin_swipe()
+                        elif is_pinching and swipe_kb.is_active:
+                            swipe_kb.update_swipe(idx_tip.x, idx_tip.y)
+                        elif not is_pinching and was_pinching and swipe_kb.is_active:
+                            word = swipe_kb.end_swipe()
+                            if word:
+                                self._emit_word(word)
+                    elif not is_pinching and was_pinching and swipe_kb.is_active:
+                        # Hand moved out of frame during pinch
+                        word = swipe_kb.end_swipe()
+                        if word:
+                            self._emit_word(word)
+
+                    was_pinching = is_pinching
+
+                    # ── Mouse / gesture actions (only when NOT swiping) ──
+                    if not swipe_kb.is_active:
+                        self._dispatch_gesture(gesture_name, hand, mouse_ctrl)
 
                     # ── Update mouse position (pointer gesture) ──────────
                     if gesture_name in ('point', 'none') and not mouse_ctrl.is_paused:
-                        idx_tip = hand.index_tip()
                         if idx_tip:
                             mouse_pos = mouse_ctrl.update_position(idx_tip.x, idx_tip.y)
                 else:
+                    # No hands detected
+                    if was_pinching and swipe_kb.is_active:
+                        word = swipe_kb.end_swipe()
+                        if word:
+                            self._emit_word(word)
+                    was_pinching = False
                     gesture_name = 'none'
                     with self._gesture_lock:
                         self._latest_gesture = 'none'
@@ -225,6 +273,7 @@ class HandVoiceIntegration:
                         gesture_confidence=gesture_conf,
                         mouse_pos=mouse_pos,
                         paused=mouse_ctrl.is_paused,
+                        swipe_state=swipe_kb.get_overlay_state(),
                     )
                     if overlay.should_quit():
                         logger.info('Overlay window closed by user.')
@@ -235,6 +284,25 @@ class HandVoiceIntegration:
             tracker.close()
             if overlay:
                 overlay.close()
+
+    def _emit_word(self, word: str) -> None:
+        """Deliver a swipe-typed word to the application.
+
+        If an ``on_word_typed`` callback was provided, it is called in a
+        daemon thread (same pattern as ``on_screenshot``).  Otherwise the
+        word is typed directly using ``pyautogui``, followed by a space.
+        """
+        logger.info('Swipe typed word: %r', word)
+        if self._on_word_typed:
+            threading.Thread(
+                target=self._on_word_typed, args=(word,), daemon=True
+            ).start()
+        else:
+            try:
+                import pyautogui  # type: ignore
+                pyautogui.write(word + ' ', interval=0.02)
+            except Exception as exc:
+                logger.warning('pyautogui.write failed: %s', exc)
 
     def _dispatch_gesture(self, gesture_name: str, hand, mouse_ctrl) -> None:
         """Execute the action associated with *gesture_name*."""
