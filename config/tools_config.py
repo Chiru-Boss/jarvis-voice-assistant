@@ -30,6 +30,12 @@ TOOLS_CONFIG = {
     'MCP_SERVER_HOST': os.getenv('MCP_SERVER_HOST', '127.0.0.1'),
     'MCP_SERVER_PORT': _safe_int(os.getenv('MCP_SERVER_PORT'), default=8765),
 
+    # ── Session Deduplication ────────────────────────────────────────────
+    # Seconds after a session completes during which a bare confirmation
+    # message is suppressed (not treated as a new task trigger).
+    # Set to 0 to disable deduplication.
+    'SESSION_DEDUP_WINDOW_SECONDS': _safe_int(os.getenv('SESSION_DEDUP_WINDOW_SECONDS'), default=120),
+
     # ── Knowledge Base ───────────────────────────────────────────────────
     'KNOWLEDGE_STORE_FILE': os.getenv('KNOWLEDGE_STORE_FILE', 'jarvis_knowledge.json'),
 

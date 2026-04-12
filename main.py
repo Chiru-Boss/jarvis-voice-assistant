@@ -33,6 +33,7 @@ from config.tools_config import TOOLS_CONFIG
 from config.hand_tracking_config import HAND_TRACKING_CONFIG
 from core.adaptive_agent import AdaptiveAgent
 from core.audio_input import AudioInput
+from core.chat_session import ChatSessionManager
 from core.speech_recognition import recognize_speech
 from core.wake_word import listen_for_wake_word, strip_wake_word
 from core.llm_brain import process_input
@@ -101,9 +102,18 @@ def startup_banner(memory: ConversationMemory, mcp_client: MCPClient, hand_enabl
     print('=' * 70 + '\n')
 
 
-def handle_special_commands(text: str, memory: ConversationMemory, mcp_client: MCPClient, agent: AdaptiveAgent = None) -> bool:
+def handle_special_commands(text: str, memory: ConversationMemory, mcp_client: MCPClient, agent: AdaptiveAgent = None, session_manager: ChatSessionManager = None) -> bool:
     """Check for built-in commands.  Return True if handled, False otherwise."""
     text_lower = text.lower().strip()
+
+    # ── Session deduplication ─────────────────────────────────────────
+    # If the user sends a bare confirmation/acknowledgement phrase while a
+    # session is already in progress or completed very recently, acknowledge
+    # it without triggering new work.
+    if session_manager is not None and session_manager.should_suppress(text):
+        reason = session_manager.suppression_reason(text)
+        print(f'✋ Duplicate confirmation detected – {reason}\n')
+        return True
 
     if text_lower in ('exit', 'quit', 'bye', 'shutdown', 'close'):
         print('\n🛑 JARVIS shutting down. Goodbye! 👋\n')
@@ -167,6 +177,11 @@ def main():
     audio_input = AudioInput(
         vad_aggressiveness=CONFIG['VAD_AGGRESSIVENESS'],
         silence_timeout=CONFIG['SILENCE_TIMEOUT'],
+    )
+
+    # ── Session deduplication manager ─────────────────────────────────
+    session_manager = ChatSessionManager(
+        dedup_window_seconds=TOOLS_CONFIG['SESSION_DEDUP_WINDOW_SECONDS'],
     )
 
     # ── Adaptive AI Agent (pattern learning + screen vision) ──────────
@@ -264,7 +279,7 @@ def main():
                 print(f'✅ You said: {command}\n')
 
             # ── 4. Special commands ───────────────────────────────────────
-            if handle_special_commands(command, memory, mcp_client, agent=agent):
+            if handle_special_commands(command, memory, mcp_client, agent=agent, session_manager=session_manager):
                 continue
 
             # ── 5. Enrich command with gesture context ────────────────────
@@ -295,6 +310,7 @@ def main():
 
             # ── 7. Get AI response (with MCP tool calling) ────────────────
             print('🧠 Thinking…\n')
+            _session_id = session_manager.start_session(command[:80])
             response = process_input(
                 user_input=command,
                 conversation_history=memory.get_recent_messages(),
@@ -307,6 +323,7 @@ def main():
                 max_tool_iterations=TOOLS_CONFIG['MAX_TOOL_ITERATIONS'],
                 pattern_hint=pattern_hint,
             )
+            session_manager.complete_session(_session_id)
 
             print(f'🤖 JARVIS: {response}\n')
 
