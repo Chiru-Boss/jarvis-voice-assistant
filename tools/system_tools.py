@@ -112,8 +112,11 @@ def open_app(app_name: str) -> str:
     """Launch an application by name, reusing an existing window if already open."""
     if _adaptive_agent is None:
         # Fallback: use laptop_control's basic launcher.
-        from tools.laptop_control import open_application
-        return open_application(app_name)
+        try:
+            from tools.laptop_control import open_application
+            return open_application(app_name)
+        except (ImportError, AttributeError) as exc:
+            return f"❌ Agent not initialised and fallback launcher unavailable: {exc}"
     return _adaptive_agent.app_controller.open_app(app_name)
 
 

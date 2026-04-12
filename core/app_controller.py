@@ -157,7 +157,7 @@ class AppController:
         """Type *text* into the currently focused window."""
         try:
             import pyautogui  # type: ignore
-            pyautogui.typewrite(text, interval=interval)
+            pyautogui.write(text, interval=interval)
             return f"✅ Typed: '{text}'."
         except ImportError:
             return '❌ pyautogui is not installed. Run: pip install pyautogui'

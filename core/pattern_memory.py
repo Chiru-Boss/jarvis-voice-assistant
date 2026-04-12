@@ -20,7 +20,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class PatternMemory:
 
     def save(self) -> None:
         """Persist current patterns to disk."""
-        self._data['last_updated'] = datetime.utcnow().isoformat()
+        self._data['last_updated'] = datetime.now(timezone.utc).isoformat()
         try:
             os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
             with open(self._db_path, 'w', encoding='utf-8') as fh:
@@ -121,7 +121,7 @@ class PatternMemory:
         entry = apps[app_key]
         entry['frequency'] += 1
         entry['total_sessions'] += 1
-        entry['last_used'] = datetime.utcnow().isoformat()
+        entry['last_used'] = datetime.now(timezone.utc).isoformat()
         entry['_session_start'] = time.time()
 
         if tod not in entry['time_of_day']:
@@ -213,7 +213,7 @@ class PatternMemory:
         history: List[Dict[str, Any]] = self._data['command_history']
         history.append({
             'command': command,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'time_of_day': _time_of_day(),
         })
         # Trim to avoid unbounded growth.
