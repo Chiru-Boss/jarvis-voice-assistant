@@ -22,6 +22,9 @@ import subprocess
 import time
 from typing import Any, Dict, List, Optional
 
+from utils.app_finder import find_app_path
+from utils.window_manager import focus_window
+
 logger = logging.getLogger(__name__)
 
 # Seconds to wait after launching an app before interacting with it.
@@ -47,22 +50,37 @@ class AppController:
     def open_app(self, app_name: str) -> str:
         """Launch *app_name* if it is not already running.
 
+        First looks up the full executable path via :func:`~utils.app_finder.find_app_path`
+        so that friendly names like ``'brave'`` are resolved to the correct
+        binary even when it is not on the system PATH.
+
         Returns a human-readable status string.
         """
         # Check if already running (using psutil when available).
         if self._is_app_running(app_name):
             # Bring it to focus instead of launching a duplicate.
-            self._focus_app(app_name)
+            focus_window(app_name)
             return f"✅ '{app_name}' is already open – brought it to focus."
 
         system = platform.system()
+
+        # Resolve the executable path; fall back to the raw name for edge cases.
+        exe_path = find_app_path(app_name) or app_name
+
         try:
             if system == 'Windows':
-                os.startfile(app_name)  # type: ignore[attr-defined]
+                if os.path.isfile(exe_path):
+                    subprocess.Popen([exe_path])
+                else:
+                    # Last resort: let the shell resolve it (e.g. system apps).
+                    os.startfile(exe_path)  # type: ignore[attr-defined]
             elif system == 'Darwin':
-                subprocess.Popen(['open', '-a', app_name])
+                if os.path.isfile(exe_path):
+                    subprocess.Popen([exe_path])
+                else:
+                    subprocess.Popen(['open', '-a', app_name])
             else:  # Linux
-                subprocess.Popen([app_name], start_new_session=True)
+                subprocess.Popen([exe_path], start_new_session=True)
 
             self._launched_apps[app_name.lower()] = time.time()
             time.sleep(_APP_LAUNCH_WAIT)
@@ -217,8 +235,8 @@ class AppController:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _is_app_running(self, app_name: str) -> bool:
-        """Return True if a process matching *app_name* is running."""
+    def is_app_running(self, app_name: str) -> bool:
+        """Return True if a process matching *app_name* is currently running."""
         try:
             import psutil  # type: ignore
             target = app_name.lower().replace('.exe', '')
@@ -233,25 +251,5 @@ class AppController:
             pass
         return False
 
-    def _focus_app(self, app_name: str) -> None:
-        """Best-effort attempt to bring *app_name* to the foreground."""
-        system = platform.system()
-        try:
-            if system == 'Windows':
-                subprocess.Popen(
-                    ['powershell', '-Command',
-                     f'(Get-Process -Name "{app_name}" -ErrorAction SilentlyContinue)'
-                     f'.MainWindowHandle | ForEach-Object {{ '
-                     f'[void][Win32]::SetForegroundWindow($_) }}'],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            elif system == 'Darwin':
-                subprocess.Popen(
-                    ['osascript', '-e',
-                     f'tell application "{app_name}" to activate'],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-        except Exception as exc:
-            logger.debug('Could not focus %s: %s', app_name, exc)
+    # Keep the private alias for backward compatibility with internal call sites.
+    _is_app_running = is_app_running

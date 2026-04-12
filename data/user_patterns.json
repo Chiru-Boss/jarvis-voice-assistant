@@ -1,18 +1,41 @@
 {
-  "apps": {},
-  "searches": {},
+  "apps": {
+    "brave": {
+      "frequency": 1,
+      "total_sessions": 1,
+      "avg_session_duration": 0.0,
+      "time_of_day": [
+        "night"
+      ],
+      "last_used": "2026-04-12T03:06:42.689250+00:00",
+      "_session_start": 1775963202.6892555
+    }
+  },
+  "searches": {
+    "news": 2
+  },
   "workflows": [],
   "time_patterns": {
     "morning": [],
     "afternoon": [],
     "evening": [],
-    "night": []
+    "night": [
+      "brave"
+    ]
   },
   "context": {
-    "current_app": "",
-    "recent_commands": [],
+    "current_app": "Brave",
+    "recent_commands": [
+      "open Brave and search for news"
+    ],
     "user_preferences": {}
   },
-  "command_history": [],
-  "last_updated": null
+  "command_history": [
+    {
+      "command": "open Brave and search for news",
+      "timestamp": "2026-04-12T03:06:42.688965+00:00",
+      "time_of_day": "night"
+    }
+  ],
+  "last_updated": "2026-04-12T03:06:42.689769+00:00"
 }
