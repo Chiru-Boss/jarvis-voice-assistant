@@ -25,6 +25,9 @@ jarvis_screenshot.png
 *.jarvis_bak
 *.jarvis_deleted_bak
 
+# Adaptive agent – user-specific learned patterns (generated at runtime)
+data/user_patterns.json
+
 # IDE
 .vscode/
 .idea/
