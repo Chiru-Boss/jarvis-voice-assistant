@@ -26,7 +26,8 @@
   "context": {
     "current_app": "Brave",
     "recent_commands": [
-      "open Brave and search for news"
+      "open Brave and search for news",
+      "test command"
     ],
     "user_preferences": {}
   },
@@ -35,7 +36,12 @@
       "command": "open Brave and search for news",
       "timestamp": "2026-04-12T03:06:42.688965+00:00",
       "time_of_day": "night"
+    },
+    {
+      "command": "test command",
+      "timestamp": "2026-04-12T04:12:54.269381+00:00",
+      "time_of_day": "night"
     }
   ],
-  "last_updated": "2026-04-12T03:06:42.689769+00:00"
+  "last_updated": "2026-04-12T04:12:54.269400+00:00"
 }
