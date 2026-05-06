@@ -66,7 +66,7 @@ Workflow inside `recognize_speech()` (line 17):
 4. On `UnknownValueError` or `RequestError` retries up to `retries=2` additional times.
 5. Returns `None` when all attempts fail.
 
-> **Note:** The `README.md` (line ~140) describes "Whisper / Google STT" but no Whisper
+> **Note:** The `README.md` (around line 140) describes "Whisper / Google STT" but no Whisper
 > integration exists in the codebase. The root-level `speech_recognition.py` (line 3)
 > contains only a stub: `def recognizing_speech(): pass`.
 
@@ -565,8 +565,8 @@ A runaway loop or adversarial input could exhaust quotas.
 ### 5.8 TTS Audio File Management
 
 `jarvis_response.mp3` (Bug 5) is written to the working directory and never cleaned up.
-For production use this file should be written to a temporary directory (`tempfile.mktemp`)
-and deleted after playback.
+For production use this file should be written to a secure temporary path
+(`tempfile.mkstemp` or `tempfile.NamedTemporaryFile`) and deleted after playback.
 
 ---
 
