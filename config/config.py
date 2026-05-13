@@ -13,6 +13,19 @@ def _safe_int(value, default=10):
         return default
 
 
+def _safe_bool(value, default=False):
+    """Parse *value* as boolean; accepts str/bool/int/None, case-insensitive."""
+    if value is None:
+        return default
+    lowered = str(value).strip().lower()
+    if lowered in {'1', 'true', 'yes', 'on'}:
+        return True
+    if lowered in {'0', 'false', 'no', 'off'}:
+        return False
+    print(f"⚠️  Invalid boolean config value '{value}', using default {default}.")
+    return default
+
+
 CONFIG = {
     'NVIDIA_API_KEY': os.getenv('NVIDIA_API_KEY', ''),
     'NVIDIA_LLM_MODEL': os.getenv('NVIDIA_LLM_MODEL', 'meta/llama-3.1-8b-instruct'),
@@ -38,4 +51,8 @@ CONFIG = {
     'TEMPERATURE': 0.7,
     'MAX_TOKENS': 300,
     'REQUEST_TIMEOUT': 60,
+
+    # Experimental UI bridge (Whisperflowactions-style HUD integration prep)
+    'UI_BRIDGE_ENABLED': _safe_bool(os.getenv('UI_BRIDGE_ENABLED', 'false'), default=False),
+    'UI_BRIDGE_MAX_EVENTS': max(1, _safe_int(os.getenv('UI_BRIDGE_MAX_EVENTS', '200'), default=200)),
 }
