@@ -40,6 +40,7 @@ from core.llm_brain import process_input
 from core.text_to_speech import speak
 from core.mcp_server import MCPServer
 from core.mcp_client import MCPClient
+from core.ui_bridge import UIBridge
 from tools import build_registry
 from utils.memory import ConversationMemory
 
@@ -190,6 +191,11 @@ def main():
     print('✅ Adaptive Agent ready.')
 
     mcp_client = init_mcp(agent)
+    ui_bridge = UIBridge(
+        enabled=CONFIG.get('UI_BRIDGE_ENABLED', False),
+        max_events=CONFIG.get('UI_BRIDGE_MAX_EVENTS', 200),
+    )
+    ui_bridge.transition('idle', 'JARVIS initialized', source='bootstrap')
 
     # ── Hand tracking (optional) ───────────────────────────────────────
     hand_integration = None
@@ -244,16 +250,19 @@ def main():
                 if g and g not in ('none', 'point'):
                     gesture_hint = f' [Hand: {g}]'
             print(f'👂 Waiting for wake word: say "{CONFIG["WAKE_WORD"].capitalize()}"…{gesture_hint}')
+            ui_bridge.transition('listening', 'Waiting for wake word', source='voice-loop')
 
             # ── 1. Capture audio ──────────────────────────────────────────
             pcm_data = audio_input.listen()
 
             # ── 2. Transcribe ─────────────────────────────────────────────
             print('⏳ Processing audio…')
+            ui_bridge.transition('thinking', 'Transcribing audio', source='voice-loop')
             text = recognize_speech(pcm_data, sample_rate=AudioInput.SAMPLE_RATE)
 
             if not text:
                 print('❌ Could not understand audio. Try again.\n')
+                ui_bridge.transition('error', 'Speech recognition failed', source='voice-loop')
                 continue
 
             print(f'✅ You said: {text}')
@@ -262,9 +271,11 @@ def main():
             if not listen_for_wake_word(text, CONFIG['WAKE_WORD']):
                 wake_word_hint = CONFIG['WAKE_WORD'].capitalize()
                 print(f'   (No wake word detected – say "{wake_word_hint}" to activate)\n')
+                ui_bridge.transition('idle', 'Wake word not detected', source='voice-loop')
                 continue
 
             print('✅ Wake word detected!')
+            ui_bridge.transition('executing', 'Wake word detected', source='voice-loop')
 
             command = strip_wake_word(text, CONFIG['WAKE_WORD']).strip()
 
@@ -275,6 +286,7 @@ def main():
                 command = recognize_speech(pcm_data, sample_rate=AudioInput.SAMPLE_RATE)
                 if not command:
                     print('❌ Could not understand. Try again.\n')
+                    ui_bridge.transition('error', 'Follow-up command not understood', source='voice-loop')
                     continue
                 print(f'✅ You said: {command}\n')
 
@@ -310,6 +322,7 @@ def main():
 
             # ── 7. Get AI response (with MCP tool calling) ────────────────
             print('🧠 Thinking…\n')
+            ui_bridge.transition('thinking', 'LLM reasoning and tool planning', source='llm')
             _session_id = session_manager.start_session(command[:80])
             response = process_input(
                 user_input=command,
@@ -326,10 +339,13 @@ def main():
             session_manager.complete_session(_session_id)
 
             print(f'🤖 JARVIS: {response}\n')
+            ui_bridge.stream_update(response[:120], source='llm', metadata={'truncated': str(len(response) > 120).lower()})
+            ui_bridge.transition('success', 'Response generated', source='llm')
 
             # ── 8. Speak ──────────────────────────────────────────────────
             if CONFIG['VOICE_ENABLED']:
                 print('🔊 Speaking…')
+                ui_bridge.transition('speaking', 'Delivering TTS output', source='tts')
                 speak(
                     response,
                     elevenlabs_api_key=CONFIG['ELEVENLABS_API_KEY'],
@@ -339,6 +355,7 @@ def main():
 
             # ── 9. Save to memory ─────────────────────────────────────────
             memory.add_conversation(command, response)
+            ui_bridge.transition('idle', 'Conversation completed', source='voice-loop')
             print(f'💾 Memory: {memory.summary()}\n')
 
     except KeyboardInterrupt:

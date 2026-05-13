@@ -141,7 +141,8 @@ JARVIS 2.0
 │   ├── core/speech_recognition.py – Whisper / Google STT
 │   ├── core/wake_word.py          – wake-word detection
 │   ├── core/llm_brain.py          – LLM + tool-calling loop
-│   └── core/text_to_speech.py     – ElevenLabs / pyttsx3 TTS
+│   ├── core/text_to_speech.py     – ElevenLabs / pyttsx3 TTS
+│   └── core/ui_bridge.py          – UI/HUD event bridge scaffold
 │
 ├── 🔧 MCP Tool Server
 │   ├── core/mcp_server.py         – HTTP tool server
@@ -172,6 +173,22 @@ JARVIS 2.0
     ├── core/behavior_learner.py    – analyse patterns
     └── core/prediction_engine.py   – predict next action
 ```
+
+---
+
+## Whisperflowactions merge scaffolding (Phase 0/1)
+
+To prepare a safe merge with Whisperflowactions UX/runtime ideas, JARVIS now
+includes an optional UI bridge that emits core pipeline state events
+(`listening`, `thinking`, `executing`, `speaking`, `success`, `error`) and
+stream-style updates.
+
+- Enable with `UI_BRIDGE_ENABLED=true` in `.env`
+- Configure ring buffer size with `UI_BRIDGE_MAX_EVENTS`
+- Integration plan and merge reasoning: `PLAN.md`
+
+This is additive and disabled by default, so existing JARVIS behavior remains
+unchanged.
 
 ---
 
