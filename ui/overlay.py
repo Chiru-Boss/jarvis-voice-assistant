@@ -51,9 +51,11 @@ class OverlayUI:
 
     def update_state(self, state: str, detail: str = '', stream: Optional[str] = None) -> None:
         self._state = state
-        self._detail = detail if detail else self._detail
+        if detail:
+            self._detail = detail
         if stream:
-            self._detail = f'{self._detail}\n{stream}'
+            base_detail = self._detail if self._detail else ''
+            self._detail = f'{base_detail}\n{stream}' if base_detail else stream
         if self._label is not None:
             self._label.configure(text=self.render_text())
             self._window.update_idletasks()

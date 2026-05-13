@@ -76,11 +76,8 @@ class VisionEngine:
             buffer = io.BytesIO()
             img.save(buffer, format='PNG')
             return buffer.getvalue()
-        except OSError as exc:
-            logger.debug('Screenshot capture failed: %s', exc)
-            return None
-        except ValueError as exc:
-            logger.debug('Screenshot encoding failed: %s', exc)
+        except (OSError, ValueError) as exc:
+            logger.debug('Screenshot operation failed: %s', exc)
             return None
 
     def _call_vision_model(self, *, image_bytes: bytes, prompt: str) -> str:

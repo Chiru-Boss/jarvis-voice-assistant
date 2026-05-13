@@ -61,12 +61,8 @@ class BrowserExecutor:
                 current_url = page.url
                 browser.close()
                 return {'status': 'ok', 'message': f'Action {action} completed.', 'url': current_url}
-        except TimeoutError as exc:
-            return {'status': 'error', 'message': f'Playwright timeout: {exc}'}
-        except ValueError as exc:
-            return {'status': 'error', 'message': f'Playwright invalid input: {exc}'}
-        except RuntimeError as exc:
-            return {'status': 'error', 'message': f'Playwright runtime error: {exc}'}
+        except (TimeoutError, ValueError, RuntimeError) as exc:
+            return {'status': 'error', 'message': f'Playwright error: {exc}'}
         except Exception as exc:
             logger.debug('Unexpected playwright execution error: %s', exc)
             return {'status': 'error', 'message': f'Playwright execution failed: {exc}'}
