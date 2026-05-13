@@ -8,6 +8,10 @@ from core.ui_bridge import UIBridge
 
 
 class TestUIBridge(unittest.TestCase):
+    def test_invalid_max_events_raises(self):
+        with self.assertRaises(ValueError):
+            UIBridge(enabled=True, max_events=0)
+
     def test_disabled_bridge_no_events(self):
         bridge = UIBridge(enabled=False, max_events=5)
         bridge.transition('thinking', 'planning')
@@ -17,7 +21,7 @@ class TestUIBridge(unittest.TestCase):
 
     def test_transitions_and_stream_updates_are_buffered(self):
         bridge = UIBridge(enabled=True, max_events=5)
-        bridge.transition('listening', 'wake word')
+        bridge.transition('listening', 'Waiting for wake word')
         bridge.stream_update('partial response')
         events = bridge.drain_events()
         self.assertEqual(len(events), 2)

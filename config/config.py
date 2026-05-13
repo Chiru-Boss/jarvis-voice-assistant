@@ -14,7 +14,7 @@ def _safe_int(value, default=10):
 
 
 def _safe_bool(value, default=False):
-    """Parse *value* as a boolean, returning *default* on failure."""
+    """Parse *value* as boolean; accepts str/bool/int/None, case-insensitive."""
     if value is None:
         return default
     lowered = str(value).strip().lower()
@@ -54,5 +54,5 @@ CONFIG = {
 
     # Experimental UI bridge (Whisperflowactions-style HUD integration prep)
     'UI_BRIDGE_ENABLED': _safe_bool(os.getenv('UI_BRIDGE_ENABLED', 'false'), default=False),
-    'UI_BRIDGE_MAX_EVENTS': _safe_int(os.getenv('UI_BRIDGE_MAX_EVENTS', '200'), default=200),
+    'UI_BRIDGE_MAX_EVENTS': max(1, _safe_int(os.getenv('UI_BRIDGE_MAX_EVENTS', '200'), default=200)),
 }

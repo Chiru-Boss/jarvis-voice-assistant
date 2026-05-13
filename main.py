@@ -50,6 +50,7 @@ from utils.memory import ConversationMemory
 # ---------------------------------------------------------------------------
 
 _TOOL_DESC_DISPLAY_LEN = 60  # Characters to show for each tool description in the banner
+_UI_BRIDGE_PREVIEW_LEN = 120  # Characters for stream preview chunks sent to UI bridge
 
 
 def init_mcp(agent: AdaptiveAgent) -> MCPClient:
@@ -250,19 +251,19 @@ def main():
                 if g and g not in ('none', 'point'):
                     gesture_hint = f' [Hand: {g}]'
             print(f'👂 Waiting for wake word: say "{CONFIG["WAKE_WORD"].capitalize()}"…{gesture_hint}')
-            ui_bridge.transition('listening', 'Waiting for wake word', source='voice-loop')
+            ui_bridge.transition('listening', 'Waiting for wake word', source='voice_loop')
 
             # ── 1. Capture audio ──────────────────────────────────────────
             pcm_data = audio_input.listen()
 
             # ── 2. Transcribe ─────────────────────────────────────────────
             print('⏳ Processing audio…')
-            ui_bridge.transition('thinking', 'Transcribing audio', source='voice-loop')
+            ui_bridge.transition('thinking', 'Transcribing audio', source='voice_loop')
             text = recognize_speech(pcm_data, sample_rate=AudioInput.SAMPLE_RATE)
 
             if not text:
                 print('❌ Could not understand audio. Try again.\n')
-                ui_bridge.transition('error', 'Speech recognition failed', source='voice-loop')
+                ui_bridge.transition('error', 'Speech recognition failed', source='voice_loop')
                 continue
 
             print(f'✅ You said: {text}')
@@ -271,11 +272,11 @@ def main():
             if not listen_for_wake_word(text, CONFIG['WAKE_WORD']):
                 wake_word_hint = CONFIG['WAKE_WORD'].capitalize()
                 print(f'   (No wake word detected – say "{wake_word_hint}" to activate)\n')
-                ui_bridge.transition('idle', 'Wake word not detected', source='voice-loop')
+                ui_bridge.transition('idle', 'Wake word not detected', source='voice_loop')
                 continue
 
             print('✅ Wake word detected!')
-            ui_bridge.transition('executing', 'Wake word detected', source='voice-loop')
+            ui_bridge.transition('executing', 'Wake word detected', source='voice_loop')
 
             command = strip_wake_word(text, CONFIG['WAKE_WORD']).strip()
 
@@ -286,7 +287,7 @@ def main():
                 command = recognize_speech(pcm_data, sample_rate=AudioInput.SAMPLE_RATE)
                 if not command:
                     print('❌ Could not understand. Try again.\n')
-                    ui_bridge.transition('error', 'Follow-up command not understood', source='voice-loop')
+                    ui_bridge.transition('error', 'Follow-up command not understood', source='voice_loop')
                     continue
                 print(f'✅ You said: {command}\n')
 
@@ -339,7 +340,14 @@ def main():
             session_manager.complete_session(_session_id)
 
             print(f'🤖 JARVIS: {response}\n')
-            ui_bridge.stream_update(response[:120], source='llm', metadata={'truncated': str(len(response) > 120).lower()})
+            ui_bridge.stream_update(
+                response[:_UI_BRIDGE_PREVIEW_LEN],
+                source='llm',
+                metadata={
+                    'truncated': len(response) > _UI_BRIDGE_PREVIEW_LEN,
+                    'full_length': len(response),
+                },
+            )
             ui_bridge.transition('success', 'Response generated', source='llm')
 
             # ── 8. Speak ──────────────────────────────────────────────────
@@ -355,7 +363,7 @@ def main():
 
             # ── 9. Save to memory ─────────────────────────────────────────
             memory.add_conversation(command, response)
-            ui_bridge.transition('idle', 'Conversation completed', source='voice-loop')
+            ui_bridge.transition('idle', 'Conversation completed', source='voice_loop')
             print(f'💾 Memory: {memory.summary()}\n')
 
     except KeyboardInterrupt:
