@@ -22,5 +22,7 @@ pytesseract   # requires Tesseract binary: https://github.com/tesseract-ocr/tess
 
 # Browser & system automation
 selenium
+playwright
 # webdriver-manager  # optional: auto-downloads ChromeDriver for Selenium
 pynput
+pystray
