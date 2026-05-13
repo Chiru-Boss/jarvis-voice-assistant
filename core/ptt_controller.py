@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from typing import Callable, Optional
 
+logger = logging.getLogger(__name__)
 
 class PushToTalkController:
     """Ctrl+Space push-to-talk hotkey controller."""
@@ -23,7 +25,8 @@ class PushToTalkController:
             return False
         try:
             from pynput import keyboard  # type: ignore
-        except Exception:
+        except ImportError as exc:
+            logger.debug('pynput unavailable for push-to-talk: %s', exc)
             return False
 
         def _wrapped_toggle() -> None:

@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
+DEFAULT_BROWSER_URL = 'https://www.google.com'
+
 
 class BrowserExecutor:
     """Playwright-based browser automation with selector strategy caching."""
@@ -28,8 +30,10 @@ class BrowserExecutor:
 
         try:
             from playwright.sync_api import TimeoutError, sync_playwright  # type: ignore
-        except Exception:
+        except ImportError:
             return {'status': 'error', 'message': 'Playwright is not installed.'}
+        except Exception as exc:
+            return {'status': 'error', 'message': f'Playwright import failed: {exc}'}
 
         try:
             with sync_playwright() as p:

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
+logger = logging.getLogger(__name__)
 
 class OverlayUI:
     """Minimal streaming status overlay (Tkinter-backed when available)."""
@@ -18,7 +20,8 @@ class OverlayUI:
             return False
         try:
             import tkinter as tk
-        except Exception:
+        except ImportError as exc:
+            logger.debug('Tkinter unavailable for overlay: %s', exc)
             return False
 
         self._window = tk.Tk()

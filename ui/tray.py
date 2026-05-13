@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TrayController:
@@ -15,7 +17,8 @@ class TrayController:
         try:
             import pystray  # type: ignore
             from PIL import Image, ImageDraw  # type: ignore
-        except Exception:
+        except ImportError as exc:
+            logger.debug('Tray dependencies unavailable: %s', exc)
             return False
 
         image = Image.new('RGB', (64, 64), color='black')

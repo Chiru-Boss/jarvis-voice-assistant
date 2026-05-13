@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from core.browser_executor import BrowserExecutor
+from core.browser_executor import BrowserExecutor, DEFAULT_BROWSER_URL
 
 
 class BrowserTaskExecutor:
@@ -13,7 +13,7 @@ class BrowserTaskExecutor:
 
     def execute_search(self, query: str) -> Dict[str, str]:
         return self.browser.run_task(
-            url='https://www.google.com',
+            url=DEFAULT_BROWSER_URL,
             action='type',
             target='Search',
             value=query,

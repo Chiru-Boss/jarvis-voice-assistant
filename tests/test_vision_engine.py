@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from core.vision_engine import VisionEngine
 
@@ -20,8 +21,12 @@ class TestVisionEngine(unittest.TestCase):
 
     def test_goal_verification_parsing(self):
         engine = VisionEngine(enabled=True, api_key='test')
-        engine._call_vision_model = lambda **_: 'UI looks correct. GOAL_VERIFIED: yes'  # type: ignore[method-assign]
-        result = engine.verify_goal('search results visible', image_bytes=b'fake')
+        with patch.object(
+            engine,
+            '_call_vision_model',
+            return_value='UI looks correct. GOAL_VERIFIED: yes',
+        ):
+            result = engine.verify_goal('search results visible', image_bytes=b'fake')
         self.assertTrue(result['ok'])
         self.assertTrue(result['goal_verified'])
 

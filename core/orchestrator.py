@@ -5,7 +5,7 @@ from typing import Any, Dict
 from config.config import CONFIG
 from core.action_router import ActionRouter
 from core.adaptive_agent import AdaptiveAgent
-from core.browser_executor import BrowserExecutor
+from core.browser_executor import BrowserExecutor, DEFAULT_BROWSER_URL
 from core.intent_classifier import IntentResult
 from core.persona_manager import PersonaManager
 from core.self_healer import SelfHealer
@@ -78,7 +78,7 @@ class JarvisOrchestrator:
         context: Dict[str, Any] | None,
     ) -> Dict[str, Any]:
         response = self.browser_executor.run_task(
-            url='https://www.google.com',
+            url=DEFAULT_BROWSER_URL,
             action='type',
             target='Search',
             value=command,
