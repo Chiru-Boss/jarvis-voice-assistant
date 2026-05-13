@@ -192,6 +192,28 @@ unchanged.
 
 ---
 
+## JARVIS v3 upgrade modules (Whisperflowactions parity layer)
+
+The repository now includes the v3 integration layer:
+
+- `core/vision_engine.py` – NVIDIA NIM vision analysis (`llama-3.2-90b-vision-instruct`)
+- `core/browser_executor.py` – Playwright browser automation with selector caching
+- `core/self_healer.py` – autonomous failure diagnosis + recovery planning
+- `core/action_router.py` + `core/intent_classifier.py` – intent-based dispatch
+- `core/persona_manager.py` – save/load multi-persona agent profiles
+- `core/ptt_controller.py` – Ctrl+Space push-to-talk hotkey support
+- `core/orchestrator.py` – v3 orchestrator layered on top of existing adaptive agent
+- `ui/overlay.py`, `ui/tray.py`, `ui/hud_state_manager.py` – HUD/tray state system
+- `executors/` – specialized executor package (browser task wrapper)
+
+See `MIGRATION_TO_V3.md` for rollout guidance.
+
+All new feature flags default to **off** in `.env.example` to preserve existing
+behavior (hand tracking, air-swipe keyboard, adaptive learning, MCP tools, and
+legacy voice commands).
+
+---
+
 ## Setup
 
 ### Requirements
