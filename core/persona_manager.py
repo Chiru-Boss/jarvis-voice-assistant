@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class PersonaManager:
@@ -17,7 +20,8 @@ class PersonaManager:
             return {'active': None, 'personas': {}}
         try:
             return json.loads(self.path.read_text(encoding='utf-8'))
-        except Exception:
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.debug('Failed to load persona store: %s', exc)
             return {'active': None, 'personas': {}}
 
     def _save(self) -> None:

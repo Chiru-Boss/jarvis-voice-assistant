@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BROWSER_URL = 'https://www.google.com'
 
@@ -32,8 +35,6 @@ class BrowserExecutor:
             from playwright.sync_api import TimeoutError, sync_playwright  # type: ignore
         except ImportError:
             return {'status': 'error', 'message': 'Playwright is not installed.'}
-        except Exception as exc:
-            return {'status': 'error', 'message': f'Playwright import failed: {exc}'}
 
         try:
             with sync_playwright() as p:
@@ -62,7 +63,12 @@ class BrowserExecutor:
                 return {'status': 'ok', 'message': f'Action {action} completed.', 'url': current_url}
         except TimeoutError as exc:
             return {'status': 'error', 'message': f'Playwright timeout: {exc}'}
+        except ValueError as exc:
+            return {'status': 'error', 'message': f'Playwright invalid input: {exc}'}
+        except RuntimeError as exc:
+            return {'status': 'error', 'message': f'Playwright runtime error: {exc}'}
         except Exception as exc:
+            logger.debug('Unexpected playwright execution error: %s', exc)
             return {'status': 'error', 'message': f'Playwright execution failed: {exc}'}
 
     def _resolve_selector(self, semantic_target: str) -> str:
@@ -104,7 +110,8 @@ class BrowserExecutor:
             return {}
         try:
             return json.loads(self.cache_path.read_text(encoding='utf-8'))
-        except Exception:
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.debug('Failed to load browser strategy cache: %s', exc)
             return {}
 
     def _store_strategy(self, semantic_target: str, selector: str) -> None:

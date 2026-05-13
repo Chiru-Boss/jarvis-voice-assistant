@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 from typing import Any, Dict, Optional
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class VisionEngine:
@@ -65,14 +68,19 @@ class VisionEngine:
     def capture_screenshot_bytes(self) -> Optional[bytes]:
         try:
             from PIL import ImageGrab  # type: ignore
-        except Exception:
+        except ImportError as exc:
+            logger.debug('Pillow ImageGrab unavailable: %s', exc)
             return None
         try:
             img = ImageGrab.grab()
             buffer = io.BytesIO()
             img.save(buffer, format='PNG')
             return buffer.getvalue()
-        except Exception:
+        except OSError as exc:
+            logger.debug('Screenshot capture failed: %s', exc)
+            return None
+        except ValueError as exc:
+            logger.debug('Screenshot encoding failed: %s', exc)
             return None
 
     def _call_vision_model(self, *, image_bytes: bytes, prompt: str) -> str:
