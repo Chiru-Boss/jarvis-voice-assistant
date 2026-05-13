@@ -49,9 +49,9 @@ class OverlayUI:
         self._window = None
         self._label = None
 
-    def update_state(self, state: str, detail: str = '', stream: Optional[str] = None) -> None:
+    def update_state(self, state: str, detail: Optional[str] = None, stream: Optional[str] = None) -> None:
         self._state = state
-        if detail:
+        if detail is not None:
             self._detail = detail
         if stream:
             base_detail = self._detail if self._detail else ''

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class PersonaManager:
         self.path = Path(path)
         self._data = self._load()
 
-    def _load(self) -> Dict[str, object]:
+    def _load(self) -> Dict[str, Any]:
         if not self.path.exists():
             return {'active': None, 'personas': {}}
         try:
@@ -28,7 +28,7 @@ class PersonaManager:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(self._data, indent=2), encoding='utf-8')
 
-    def save_persona(self, name: str, *, system_prompt: str, model: str = '', temperature: float = 0.7) -> Dict[str, object]:
+    def save_persona(self, name: str, *, system_prompt: str, model: str = '', temperature: float = 0.7) -> Dict[str, Any]:
         personas = self._data.setdefault('personas', {})
         personas[name] = {
             'name': name,
@@ -41,7 +41,7 @@ class PersonaManager:
         self._save()
         return personas[name]  # type: ignore[index]
 
-    def load_persona(self, name: str) -> Optional[Dict[str, object]]:
+    def load_persona(self, name: str) -> Optional[Dict[str, Any]]:
         personas = self._data.get('personas', {})
         return personas.get(name) if isinstance(personas, dict) else None
 
@@ -58,7 +58,7 @@ class PersonaManager:
         self._save()
         return True
 
-    def get_active_persona(self) -> Optional[Dict[str, object]]:
+    def get_active_persona(self) -> Optional[Dict[str, Any]]:
         active_name = self._data.get('active')
         if not active_name:
             return None
