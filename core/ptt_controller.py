@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Set
+from typing import Any, Callable, Optional, Set
 
 
 class PushToTalkController:
@@ -46,6 +46,11 @@ class PushToTalkController:
                 self._on_stop()
 
     def start(self) -> bool:
+        """Start keyboard hotkey listener.
+
+        Returns True when the listener starts successfully.
+        Returns False if PTT is disabled or pynput is unavailable.
+        """
         if not self.enabled:
             return False
         try:
@@ -53,7 +58,7 @@ class PushToTalkController:
         except Exception:
             return False
 
-        def normalize(key) -> str:
+        def normalize(key: Any) -> str:
             text = str(key).lower()
             if 'space' in text:
                 return 'space'

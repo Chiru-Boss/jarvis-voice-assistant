@@ -17,6 +17,8 @@ class VisionConfig:
     model: str = 'llama-3.2-90b-vision-instruct'
     api_key: str = ''
     base_url: str = 'https://integrate.api.nvidia.com/v1'
+    cache_ttl_seconds: float = 45.0
+    max_tokens: int = 300
 
 
 class VisionEngine:
@@ -28,19 +30,34 @@ class VisionEngine:
         requester: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
         cache: Optional[VisionCache] = None,
     ):
+        def _safe_float(value: str, default: float) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
         self._config = config or VisionConfig(
             enabled=os.getenv('VISION_ENABLED', 'false').lower() == 'true',
             model=os.getenv('VISION_MODEL', 'llama-3.2-90b-vision-instruct'),
             api_key=os.getenv('NVIDIA_VISION_API_KEY', ''),
+            cache_ttl_seconds=_safe_float(os.getenv('VISION_CACHE_TTL', '45'), 45.0),
         )
         self._requester = requester or self._default_requester
-        self._cache = cache or VisionCache(ttl_seconds=45)
+        self._cache = cache or VisionCache(ttl_seconds=self._config.cache_ttl_seconds)
 
     @property
     def enabled(self) -> bool:
         return self._config.enabled
 
     def analyze_screenshot(self, task: str, *, image_bytes: bytes) -> Dict[str, Any]:
+        """Analyze screenshot bytes for a goal/task.
+
+        Returns a dictionary with:
+        - ``enabled``: whether vision path is active
+        - ``completed``: bool verdict for goal completion
+        - ``analysis``: plain-English diagnosis text
+        - ``recovery_plan``: suggested recovery actions (list)
+        """
         if not self.enabled:
             return {'enabled': False, 'analysis': 'Vision disabled', 'completed': False}
         if not image_bytes:
@@ -66,7 +83,7 @@ class VisionEngine:
                 }
             ],
             'temperature': 0.1,
-            'max_tokens': 300,
+            'max_tokens': self._config.max_tokens,
         }
 
         response = self._requester(payload)

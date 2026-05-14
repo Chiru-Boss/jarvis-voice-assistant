@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 
 from executors.dom_navigator import DOMNavigator
 
+_PLAYWRIGHT_MAX_TIMEOUT_MS = 2_147_483_647
+
 
 class BrowserExecutor:
     def __init__(self, *, enabled: bool = False, timeout_seconds: int = 30, navigator: Optional[DOMNavigator] = None):
@@ -14,6 +16,14 @@ class BrowserExecutor:
         self.navigator = navigator or DOMNavigator()
 
     def execute(self, instruction: str, *, page_snapshot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Execute a browser instruction.
+
+        When *page_snapshot* is provided, runs offline semantic selection using
+        snapshot element metadata and returns the chosen target.
+        Otherwise attempts a minimal live Playwright execution bootstrap.
+        Returns a dict with ``ok`` (bool), ``message`` (str), and optional
+        ``target`` (dict) fields.
+        """
         if not self.enabled:
             return {'ok': False, 'message': 'Browser automation disabled'}
 
@@ -29,9 +39,10 @@ class BrowserExecutor:
         except Exception as exc:
             return {'ok': False, 'message': f'Playwright unavailable: {exc}'}
 
+        timeout_ms = max(1_000, min(self.timeout_seconds * 1000, _PLAYWRIGHT_MAX_TIMEOUT_MS))
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=False)
             page = browser.new_page()
-            page.goto('about:blank', wait_until='domcontentloaded', timeout=self.timeout_seconds * 1000)
+            page.goto('about:blank', wait_until='domcontentloaded', timeout=timeout_ms)
             browser.close()
         return {'ok': True, 'message': 'Browser automation bootstrap completed'}

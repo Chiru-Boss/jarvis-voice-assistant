@@ -25,6 +25,19 @@ class TestBrowserAutomationExecutor(unittest.TestCase):
         result = executor.execute_task('click submit')
         self.assertFalse(result['ok'])
 
+    def test_page_snapshot_selects_matching_element(self):
+        executor = BrowserAutomationExecutor(enabled=True)
+        result = executor.execute_task(
+            'checkout',
+            page_snapshot={
+                'elements': [
+                    {'tag': 'button', 'text': 'Checkout', 'visible': True, 'importance': 1.0},
+                ]
+            },
+        )
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['target']['text'], 'Checkout')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Dict, Optional
 
 from core.action_router import ActionRouter
@@ -19,6 +20,12 @@ class Orchestrator:
     """Coordinate optional v3 modules while preserving classic behavior."""
 
     def __init__(self, agent: Optional[AdaptiveAgent] = None):
+        def _safe_float(value: str, default: float) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
         self.agent = agent or AdaptiveAgent()
         self.router = ActionRouter()
         self.vision = VisionEngine()
@@ -28,11 +35,20 @@ class Orchestrator:
         self.overlay = OverlayHUD(
             enabled=os.getenv('ENABLE_OVERLAY_UI', 'false').lower() == 'true',
             position=os.getenv('OVERLAY_POSITION', 'top-right'),
-            opacity=float(os.getenv('OVERLAY_OPACITY', '0.9')),
+            opacity=_safe_float(os.getenv('OVERLAY_OPACITY', '0.9'), 0.9),
         )
         self.tray = TrayIndicator(enabled=self.overlay.enabled)
 
     def process(self, command: str, *, screenshot_bytes: bytes = b'', page_snapshot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Process a command through optional v3 routing.
+
+        - Uses action routing to select vision, browser, persona, or fallback
+          adaptive-agent execution.
+        - *screenshot_bytes* is used by vision verification routes.
+        - *page_snapshot* is used by browser semantic targeting routes.
+        Returns ``{'route': ..., 'result': ...}`` on success, or includes
+        ``error`` and ``recovery`` fields on failures.
+        """
         caps = {
             'vision': self.vision.enabled,
             'browser': self.browser.enabled,
@@ -57,7 +73,7 @@ class Orchestrator:
                 return {'route': decision.route, 'result': result}
 
             if decision.route == 'persona':
-                name = command.split()[-1].strip().lower()
+                name = self._extract_persona_name(command)
                 persona = self.persona_manager.switch_persona(name)
                 self.overlay.update('success', f'Persona switched to {name}')
                 return {'route': decision.route, 'result': persona}
@@ -80,3 +96,11 @@ class Orchestrator:
                     'recovered': healed.recovered,
                 },
             }
+
+    @staticmethod
+    def _extract_persona_name(command: str) -> str:
+        text = (command or '').strip()
+        match = re.search(r'(?:switch persona|use persona|load persona)\s+(.+)$', text, flags=re.IGNORECASE)
+        if match:
+            return match.group(1).strip().lower()
+        return text.split()[-1].strip().lower() if text else ''

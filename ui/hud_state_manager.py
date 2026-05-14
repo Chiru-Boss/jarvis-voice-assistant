@@ -16,6 +16,7 @@ class HUDStateEvent:
 
 class HUDStateManager:
     VALID_STATES = {'idle', 'listening', 'thinking', 'executing', 'speaking', 'success', 'error'}
+    MAX_EVENT_HISTORY = 50
 
     def __init__(self):
         self._events: List[HUDStateEvent] = []
@@ -35,5 +36,5 @@ class HUDStateManager:
     def snapshot(self) -> Dict[str, object]:
         return {
             'state': self._state,
-            'events': [asdict(e) for e in self._events[-50:]],
+            'events': [asdict(e) for e in self._events[-self.MAX_EVENT_HISTORY:]],
         }

@@ -24,7 +24,7 @@ class DOMNavigator:
                 score += 2.5
             if query and query in text:
                 score += 3.0
-            score += float(el.get('importance', 0.0) or 0.0)
+            score += float(el.get('importance', 0.0))
             ranked.append({**el, '_score': score})
 
         ranked.sort(key=lambda item: item.get('_score', 0.0), reverse=True)

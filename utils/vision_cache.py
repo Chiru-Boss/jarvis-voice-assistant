@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Tuple
 
 class VisionCache:
     def __init__(self, ttl_seconds: float = 60.0):
-        self._ttl = max(1.0, float(ttl_seconds))
+        self._ttl = min(3600.0, max(1.0, float(ttl_seconds)))
         self._items: Dict[str, Tuple[float, Any]] = {}
 
     @staticmethod
