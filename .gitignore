@@ -27,6 +27,7 @@ jarvis_screenshot.png
 
 # Adaptive agent – user-specific learned patterns (generated at runtime)
 data/user_patterns.json
+data/personas/*.json
 
 # IDE
 .vscode/

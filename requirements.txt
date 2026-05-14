@@ -10,6 +10,10 @@ numpy
 webrtcvad
 psutil
 Pillow
+openai>=1.0.0
+websockets>=12.0
+pydantic>=2.0.0
+aiohttp>=3.9.0
 
 # Hand tracking (optional – required when HAND_TRACKING_ENABLED=true)
 mediapipe
@@ -23,4 +27,5 @@ pytesseract   # requires Tesseract binary: https://github.com/tesseract-ocr/tess
 # Browser & system automation
 selenium
 # webdriver-manager  # optional: auto-downloads ChromeDriver for Selenium
-pynput
+pynput>=1.7.6
+playwright>=1.40.0

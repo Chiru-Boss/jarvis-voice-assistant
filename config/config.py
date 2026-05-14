@@ -55,4 +55,34 @@ CONFIG = {
     # Experimental UI bridge (Whisperflowactions-style HUD integration prep)
     'UI_BRIDGE_ENABLED': _safe_bool(os.getenv('UI_BRIDGE_ENABLED', 'false'), default=False),
     'UI_BRIDGE_MAX_EVENTS': max(1, _safe_int(os.getenv('UI_BRIDGE_MAX_EVENTS', '200'), default=200)),
+
+    # JARVIS v3 - Vision
+    'VISION_ENABLED': _safe_bool(os.getenv('VISION_ENABLED', 'false'), default=False),
+    'VISION_MODEL': os.getenv('VISION_MODEL', 'llama-3.2-90b-vision-instruct'),
+    'NVIDIA_VISION_API_KEY': os.getenv('NVIDIA_VISION_API_KEY', ''),
+
+    # JARVIS v3 - Browser automation
+    'BROWSER_AUTOMATION_ENABLED': _safe_bool(os.getenv('BROWSER_AUTOMATION_ENABLED', 'false'), default=False),
+    'USE_PLAYWRIGHT': _safe_bool(os.getenv('USE_PLAYWRIGHT', 'true'), default=True),
+    'BROWSER_HEADLESS': _safe_bool(os.getenv('BROWSER_HEADLESS', 'false'), default=False),
+    'BROWSER_TIMEOUT': max(5, _safe_int(os.getenv('BROWSER_TIMEOUT', '30'), default=30)),
+
+    # JARVIS v3 - Push-to-talk
+    'PTT_ENABLED': _safe_bool(os.getenv('PTT_ENABLED', 'false'), default=False),
+    'PTT_HOTKEY': os.getenv('PTT_HOTKEY', 'ctrl+space'),
+
+    # JARVIS v3 - Overlay
+    'ENABLE_OVERLAY_UI': _safe_bool(os.getenv('ENABLE_OVERLAY_UI', 'false'), default=False),
+    'OVERLAY_POSITION': os.getenv('OVERLAY_POSITION', 'top-right'),
+    'OVERLAY_OPACITY': float(os.getenv('OVERLAY_OPACITY', '0.9') or 0.9),
+
+    # JARVIS v3 - Persona and routing
+    'PERSONA_SYSTEM_ENABLED': _safe_bool(os.getenv('PERSONA_SYSTEM_ENABLED', 'false'), default=False),
+    'PERSONA_DATA_DIR': os.getenv('PERSONA_DATA_DIR', 'data/personas'),
+    'LLM_PROVIDER': os.getenv('LLM_PROVIDER', 'nvidia'),
+    'FALLBACK_PROVIDERS': os.getenv('FALLBACK_PROVIDERS', 'ollama'),
+
+    # JARVIS v3 - Self-healing
+    'SELF_HEALING_ENABLED': _safe_bool(os.getenv('SELF_HEALING_ENABLED', 'false'), default=False),
+    'MAX_RECOVERY_ATTEMPTS': max(1, _safe_int(os.getenv('MAX_RECOVERY_ATTEMPTS', '3'), default=3)),
 }

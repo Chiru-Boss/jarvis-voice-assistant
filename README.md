@@ -192,6 +192,33 @@ unchanged.
 
 ---
 
+## JARVIS v3 optional modules (Whisperflowactions-aligned)
+
+JARVIS now includes a modular v3 layer with **all new features disabled by
+default** for backward compatibility.
+
+### New v3 modules
+
+- `core/vision_engine.py` – NVIDIA `llama-3.2-90b-vision-instruct` screenshot analysis
+- `core/browser_executor.py`, `executors/browser_executor.py`, `executors/dom_navigator.py` – Playwright-ready browser automation + semantic targeting
+- `core/self_healer.py` – plain-English failure diagnosis + recovery retries
+- `core/action_router.py`, `core/intent_classifier.py` – intent classification/routing
+- `core/persona_manager.py` – save/load/switch expert personas
+- `core/ptt_controller.py` – Ctrl+Space push-to-talk controller
+- `core/orchestrator.py` – unified optional v3 orchestration path
+- `ui/overlay.py`, `ui/hud_state_manager.py`, `ui/tray.py` – HUD/tray state tracking
+- `utils/browser_manager.py`, `utils/vision_cache.py` – lifecycle + vision caching helpers
+
+### v3 docs
+
+- [`MIGRATION_TO_V3.md`](MIGRATION_TO_V3.md)
+- [`V3_FEATURES.md`](V3_FEATURES.md)
+- [`VISION_INTEGRATION.md`](VISION_INTEGRATION.md)
+- [`BROWSER_AUTOMATION.md`](BROWSER_AUTOMATION.md)
+- [`PERSONAS.md`](PERSONAS.md)
+
+---
+
 ## Setup
 
 ### Requirements
@@ -229,6 +256,10 @@ HAND_TRACKING_ENABLED=true         # enable webcam hand control
 WAKE_WORD=jarvis
 ```
 
+For v3 modules, keep flags disabled initially and enable incrementally:
+`VISION_ENABLED`, `BROWSER_AUTOMATION_ENABLED`, `PTT_ENABLED`,
+`ENABLE_OVERLAY_UI`, `PERSONA_SYSTEM_ENABLED`, `SELF_HEALING_ENABLED`.
+
 ### Running
 
 ```bash
@@ -249,6 +280,8 @@ python main.py
 | 🧠 Pattern Learning | `core/pattern_memory.py`, `core/behavior_learner.py`, `core/prediction_engine.py` | `tests/test_adaptive_agent.py` |
 | 🔧 MCP Tool Architecture | `core/tool_registry.py`, `core/mcp_server.py`, `core/mcp_client.py`, `tools/` | `tests/test_chat_session.py` |
 | 🏥 System Health Check | `core/system_health.py` | `tests/test_system_health.py` |
+| 🚀 v3 Optional Intelligence Layer | `core/orchestrator.py`, `core/vision_engine.py`, `core/self_healer.py`, `core/action_router.py`, `core/persona_manager.py` | `tests/test_vision_engine.py`, `tests/test_self_healer.py`, `tests/test_action_router.py`, `tests/test_persona_manager.py` |
+| 🌐 v3 Browser Automation Layer | `core/browser_executor.py`, `executors/browser_executor.py`, `executors/dom_navigator.py` | `tests/test_browser_executor.py` |
 
 No pending features or PRs remain.  JARVIS is ready for user testing and
 further expansion.
@@ -285,6 +318,10 @@ All tests cover:
 - AdaptiveAgent command routing and pattern recording
 - Hand-tracking module import guard (no regressions to hologram cursor)
 - System health checker (SubsystemStatus, HealthReport, check_health)
+- Vision verification module behavior and response parsing
+- Browser semantic element targeting logic
+- Self-healing recovery retries and diagnosis
+- Action routing and persona profile persistence
 
 ---
 
