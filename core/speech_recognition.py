@@ -1,6 +1,10 @@
 import io
 import wave
-import speech_recognition as sr
+
+try:
+    import speech_recognition as sr
+except ModuleNotFoundError:
+    sr = None
 
 
 def pcm_to_wav_bytes(pcm_data, sample_rate=16000, channels=1, sampwidth=2):
@@ -36,6 +40,9 @@ def recognize_speech(pcm_data, sample_rate=16000, retries=2):
     """
     if not pcm_data:
         print('⚠️  No audio data to recognise.')
+        return None
+    if sr is None:
+        print('⚠️  SpeechRecognition package is not installed. Run: pip install SpeechRecognition')
         return None
 
     recognizer = sr.Recognizer()

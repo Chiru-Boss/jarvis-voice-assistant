@@ -97,6 +97,10 @@ def startup_banner(memory: ConversationMemory, mcp_client: MCPClient, hand_enabl
         print('✅ System Executor – Ready')
     if TOOLS_CONFIG['APPROVAL_MODE']:
         print('🔒 Approval Mode – ON (destructive tools require confirmation)')
+    if CONFIG.get('UI_BRIDGE_ENABLED', False):
+        print('🧩 UI Bridge – ACTIVE (event stream only, no standalone desktop window)')
+    if CONFIG.get('ENABLE_OVERLAY_UI', False) and not hand_enabled:
+        print('ℹ️  Overlay UI requires hand-tracking window support. Set HAND_TRACKING_ENABLED=true.')
     if hand_enabled:
         print('🖐️  Hand Tracking – ACTIVE (hologram cursor enabled)')
     print(f'\n🔑 Wake word: "{CONFIG["WAKE_WORD"].capitalize()}"')

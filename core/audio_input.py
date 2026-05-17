@@ -1,6 +1,31 @@
+import math
+import struct
 import time
+
 import sounddevice as sd
-import webrtcvad
+
+try:
+    import webrtcvad
+    _VAD_IMPORT_ERROR = None
+except ModuleNotFoundError as exc:
+    webrtcvad = None
+    _VAD_IMPORT_ERROR = exc
+
+
+class _EnergyVAD:
+    """Fallback VAD used when WebRTC VAD is unavailable."""
+
+    def __init__(self, energy_threshold=350):
+        self.energy_threshold = energy_threshold
+
+    def is_speech(self, frame, sample_rate):
+        """Match webrtcvad.Vad.is_speech(frame, sample_rate) API."""
+        if not frame:
+            return False
+        sample_count = len(frame) // 2
+        samples = struct.unpack('<' + ('h' * sample_count), frame)
+        rms = math.sqrt(sum(sample * sample for sample in samples) / sample_count)
+        return rms >= self.energy_threshold
 
 
 class AudioInput:
@@ -19,7 +44,14 @@ class AudioInput:
     FRAME_BYTES = FRAME_SAMPLES * 2  # 16-bit = 2 bytes per sample
 
     def __init__(self, vad_aggressiveness=2, silence_timeout=1.5):
-        self.vad = webrtcvad.Vad(vad_aggressiveness)
+        if webrtcvad is None:
+            print(
+                "⚠️  WebRTC VAD unavailable "
+                f"({_VAD_IMPORT_ERROR}). Falling back to energy-based VAD."
+            )
+            self.vad = _EnergyVAD()
+        else:
+            self.vad = webrtcvad.Vad(vad_aggressiveness)
         self.silence_timeout = silence_timeout
 
     # ------------------------------------------------------------------
