@@ -13,12 +13,13 @@ except ModuleNotFoundError as exc:
 
 
 class _EnergyVAD:
-    """Small fallback VAD used when WebRTC VAD is unavailable."""
+    """Fallback VAD used when WebRTC VAD is unavailable."""
 
     def __init__(self, energy_threshold=350):
         self.energy_threshold = energy_threshold
 
-    def is_speech(self, frame, sample_rate):  # pylint: disable=unused-argument
+    def is_speech(self, frame, sample_rate):
+        """Match webrtcvad.Vad.is_speech(frame, sample_rate) API."""
         if not frame:
             return False
         sample_count = len(frame) // 2
