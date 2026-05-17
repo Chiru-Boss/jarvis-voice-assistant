@@ -1,5 +1,3 @@
-# requirements.txt
-
 python-dotenv
 requests
 pyttsx3
@@ -7,7 +5,7 @@ SpeechRecognition
 sounddevice
 soundfile
 numpy
-webrtcvad
+# webrtcvad  # Temporarily disabled for Docker - requires gcc and kernel headers
 psutil
 Pillow
 openai>=1.0.0
@@ -29,3 +27,22 @@ selenium
 # webdriver-manager  # optional: auto-downloads ChromeDriver for Selenium
 pynput>=1.7.6
 playwright>=1.40.0
+
+# Backend - FastAPI Stack
+fastapi>=0.104.0
+uvicorn>=0.24.0
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+alembic>=1.13.0
+python-jose>=3.3.0
+passlib>=1.7.4
+python-multipart>=0.0.6
+redis>=5.0.0
+celery>=5.3.0
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+scikit-learn>=1.3.0
+loguru>=0.7.0
+
+# Optional: Home automation & integrations
+# homeassistant  # Uncomment if needed
